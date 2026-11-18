@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "cli"]
+members = ["core", "cli", "app"]
 
 [workspace.package]
 version = "0.1.0"
@@ -13,3 +13,7 @@ debug = 1
 
 [profile.dev]
 opt-level = 1
+
+# Las dependencias se optimizan siempre: Bevy en debug es inusable.
+[profile.dev.package."*"]
+opt-level = 3

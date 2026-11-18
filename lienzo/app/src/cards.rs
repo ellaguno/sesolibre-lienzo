@@ -1,0 +1,246 @@
+//! Los trazos como cartas de papel en el espacio. Cada pincel decide qué
+//! sprites pone a lo largo del trazo, de qué tamaño y cómo se mueven.
+
+use crate::world::{to_world, Billboard, Common};
+use bevy::prelude::*;
+use lienzo_core::{Brush, Scene, Stroke};
+use std::collections::HashMap;
+
+#[derive(Resource, Default)]
+pub struct SpriteMaterials {
+    cache: HashMap<&'static str, Handle<StandardMaterial>>,
+}
+
+impl SpriteMaterials {
+    fn get(&mut self, name: &'static str, assets: &AssetServer, materials: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+        self.cache
+            .entry(name)
+            .or_insert_with(|| {
+                materials.add(StandardMaterial {
+                    base_color_texture: Some(assets.load(format!("sprites/cut/{name}.png"))),
+                    unlit: true,
+                    alpha_mode: AlphaMode::Blend,
+                    cull_mode: None,
+                    double_sided: true,
+                    ..default()
+                })
+            })
+            .clone()
+    }
+}
+
+/// Proporción ancho/alto de cada sprite, medida al recortar.
+fn aspect(name: &str) -> f32 {
+    match name {
+        "medusa" => 512.0 / 608.0,
+        "pez_a_1" => 923.0 / 346.0,
+        "pez_a_2" => 802.0 / 252.0,
+        "pez_a_3" => 850.0 / 324.0,
+        "pez_b" => 609.0 / 451.0,
+        "pez_c" => 477.0 / 468.0,
+        "coral_a_1" => 763.0 / 631.0,
+        "coral_a_2" => 538.0 / 616.0,
+        "coral_b" => 623.0 / 484.0,
+        "coral_b_2" => 623.0 / 489.0,
+        "anemona" => 519.0 / 544.0,
+        "kelp_hoja" => 243.0 / 721.0,
+        "ballena" => 1026.0 / 371.0,
+        "barco" => 909.0 / 591.0,
+        "roca_a_1" | "roca_a_2" => 1.3,
+        "roca_b" => 0.6,
+        "manta" => 664.0 / 454.0,
+        _ => 1.0,
+    }
+}
+
+#[derive(Component)]
+pub struct Card {
+    pub stroke: usize,
+    pub kind: Motion,
+    pub phase: f32,
+    pub base: Vec3,
+    pub flip: bool,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Motion {
+    Sway,
+    Swim,
+    Bob,
+    Rise,
+    Still,
+}
+
+#[derive(Component)]
+pub struct Owned(pub usize);
+
+fn hash01(a: usize, b: usize) -> f32 {
+    let mut h = (a as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (b as u64).wrapping_mul(0xBF58476D1CE4E5B9);
+    h ^= h >> 31;
+    h = h.wrapping_mul(0x94D049BB133111EB);
+    (h >> 40) as f32 / (1u64 << 24) as f32
+}
+
+/// Puntos equidistantes a lo largo del trazo, cada `step` unidades de mundo.
+fn along(stroke: &Stroke, step: f32) -> Vec<(Vec3, Vec3)> {
+    let pts: Vec<Vec3> = stroke.points.iter().map(|p| to_world(*p)).collect();
+    if pts.len() < 2 {
+        return vec![(pts[0], Vec3::X)];
+    }
+    let mut out = vec![];
+    let mut carry = 0.0;
+    for w in pts.windows(2) {
+        let seg = w[1] - w[0];
+        let len = seg.length();
+        if len < 1e-5 {
+            continue;
+        }
+        let dir = seg / len;
+        let mut d = carry;
+        while d <= len {
+            out.push((w[0] + dir * d, dir));
+            d += step;
+        }
+        carry = d - len;
+    }
+    if out.is_empty() {
+        out.push((pts[0], Vec3::X));
+    }
+    out
+}
+
+fn spawn_card(
+    commands: &mut Commands,
+    common: &Common,
+    mats: &mut SpriteMaterials,
+    assets: &AssetServer,
+    materials: &mut Assets<StandardMaterial>,
+    name: &'static str,
+    pos: Vec3,
+    height: f32,
+    flip: bool,
+    stroke: usize,
+    kind: Motion,
+    phase: f32,
+) {
+    let w = height * aspect(name) * if flip { -1.0 } else { 1.0 };
+    // las cartas se anclan por su base: pos es el punto de apoyo
+    let base = pos + Vec3::Y * height * 0.5;
+    commands.spawn((
+        Mesh3d(common.quad.clone()),
+        MeshMaterial3d(mats.get(name, assets, materials)),
+        Transform::from_translation(base).with_scale(Vec3::new(w, height, 1.0)),
+        Card { stroke, kind, phase, base, flip },
+        Owned(stroke),
+        Billboard,
+    ));
+}
+
+/// Materializa un trazo nuevo. Determinista por índice de trazo.
+pub fn spawn_stroke(
+    commands: &mut Commands,
+    common: &Common,
+    mats: &mut SpriteMaterials,
+    assets: &AssetServer,
+    materials: &mut Assets<StandardMaterial>,
+    stroke: &Stroke,
+    index: usize,
+) {
+    let h = |k: usize| hash01(index, k);
+    let floor = |v: Vec3| Vec3::new(v.x, 0.0, v.z);
+    match stroke.brush {
+        Brush::Kelp => {
+            for (k, (p, _)) in along(stroke, 0.55).into_iter().enumerate() {
+                let height = 1.6 + 1.6 * h(k);
+                let jitter = Vec3::new(h(k + 100) - 0.5, 0.0, h(k + 200) - 0.5) * 0.4;
+                spawn_card(commands, common, mats, assets, materials, "kelp_hoja", floor(p) + jitter, height, k % 2 == 0, index, Motion::Sway, h(k + 300) * 6.28);
+            }
+        }
+        Brush::Coral => {
+            let names = ["coral_a_1", "coral_a_2", "coral_b", "coral_b_2"];
+            for (k, (p, _)) in along(stroke, 0.9).into_iter().enumerate() {
+                let name = names[(k + (h(k) * 4.0) as usize) % 4];
+                spawn_card(commands, common, mats, assets, materials, name, floor(p), 0.8 + 0.7 * h(k + 1), h(k + 2) > 0.5, index, Motion::Still, 0.0);
+            }
+        }
+        Brush::Anemona => {
+            let p = to_world(stroke.points[0]);
+            spawn_card(commands, common, mats, assets, materials, "anemona", floor(p), 0.9 + 0.3 * h(0), false, index, Motion::Still, 0.0);
+        }
+        Brush::Cardumen => {
+            let names = ["pez_a_1", "pez_a_2", "pez_a_3"];
+            for (k, (p, dir)) in along(stroke, 0.42).into_iter().enumerate() {
+                let jitter = Vec3::new(0.0, h(k + 50) - 0.5, h(k + 60) - 0.5) * 0.35;
+                spawn_card(commands, common, mats, assets, materials, names[k % 3], p + jitter, 0.28 + 0.14 * h(k), dir.x < 0.0, index, Motion::Swim, h(k + 70) * 6.28);
+            }
+        }
+        Brush::Medusa => {
+            let p = to_world(stroke.points[0]);
+            spawn_card(commands, common, mats, assets, materials, "medusa", p - Vec3::Y * 0.6, 1.2 + 0.3 * h(0), false, index, Motion::Bob, h(1) * 6.28);
+        }
+        Brush::Burbujas => {
+            for (k, (p, _)) in along(stroke, 0.3).into_iter().enumerate() {
+                let s = 0.08 + 0.12 * h(k);
+                commands.spawn((
+                    Mesh3d(common.quad.clone()),
+                    MeshMaterial3d(common.dot.clone()),
+                    Transform::from_translation(p).with_scale(Vec3::splat(s)),
+                    Card { stroke: index, kind: Motion::Rise, phase: h(k + 9) * 6.28, base: p, flip: false },
+                    Owned(index),
+                    Billboard,
+                ));
+            }
+        }
+        Brush::Ballena => {
+            let p = to_world(stroke.points[0]);
+            spawn_card(commands, common, mats, assets, materials, "ballena", p - Vec3::Y * 0.8, 1.6, p.x > 0.0, index, Motion::Swim, 0.0);
+        }
+        Brush::Barco => {
+            let p = to_world(stroke.points[0]);
+            spawn_card(commands, common, mats, assets, materials, "barco", floor(p), 2.2, p.x < 0.0, index, Motion::Still, 0.0);
+        }
+    }
+}
+
+pub fn spawn_scene(
+    mut commands: Commands,
+    common: Res<Common>,
+    mut mats: ResMut<SpriteMaterials>,
+    assets: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    scene: Res<crate::Obra>,
+) {
+    for (i, s) in scene.scene.strokes.iter().enumerate() {
+        spawn_stroke(&mut commands, &common, &mut mats, &assets, &mut materials, s, i);
+    }
+}
+
+/// Todo vive: el kelp se mece, los peces nadan, la medusa pulsa, las burbujas suben.
+pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &Card)>) {
+    let t = time.elapsed_secs();
+    for (mut tf, c) in q.iter_mut() {
+        match c.kind {
+            Motion::Sway => {
+                let a = (t * 0.55 + c.phase).sin() * 0.07;
+                let (y, _, _) = tf.rotation.to_euler(EulerRot::YXZ);
+                tf.rotation = Quat::from_euler(EulerRot::YXZ, y, 0.0, a);
+            }
+            Motion::Swim => {
+                let dir = if c.flip { -1.0 } else { 1.0 };
+                tf.translation.x = c.base.x + dir * (t * 0.25 + c.phase).sin() * 0.6;
+                tf.translation.y = c.base.y + (t * 0.9 + c.phase).sin() * 0.06;
+            }
+            Motion::Bob => {
+                tf.translation.y = c.base.y + (t * 0.5 + c.phase).sin() * 0.25;
+                let s = 1.0 + (t * 1.1 + c.phase).sin() * 0.04;
+                tf.scale.x = tf.scale.x.signum() * tf.scale.x.abs().max(1e-3) * (s / (1.0 + (t * 1.1 + c.phase - 0.016).sin() * 0.04));
+            }
+            Motion::Rise => {
+                let y = (c.base.y + (t * 0.35 + c.phase) * 0.6) % 5.5;
+                tf.translation.y = y;
+                tf.translation.x = c.base.x + (t * 0.8 + c.phase).sin() * 0.08;
+            }
+            Motion::Still => {}
+        }
+    }
+}

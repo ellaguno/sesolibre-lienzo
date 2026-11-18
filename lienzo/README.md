@@ -3,7 +3,22 @@
 ```
 core/   lienzo-core: escena → motivos → director → render. Sin UI. Se prueba headless.
 cli/    `lienzo`: demo, describe, render. Para escuchar sin app.
+app/    `lienzo-app`: Bevy. El abismo en 3D, cámara orbital, cartas de papel, audio en vivo.
 ```
+
+## La app
+
+```bash
+cd lienzo && cargo run -p lienzo-app --release            # abre la escena demo
+cd lienzo && cargo run -p lienzo-app --release -- obra.json
+```
+
+Botón derecho o central: orbitar · rueda: acercar. Busca la raíz del proyecto subiendo
+desde el directorio actual hasta encontrar `assets/manifest.toml`.
+
+El audio en vivo es **el mismo `Engine` del core** corriendo en el hilo de la tarjeta de
+sonido (`app/src/audio.rs`). La app no mezcla nada: le manda escenas y el motor compone y
+suena. Lo que se oye en vivo y lo que exporta `lienzo render` es el mismo código.
 
 ## Correr
 
