@@ -2,7 +2,8 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use lienzo_core::{compose, director, render, write_wav, RenderOptions, SampleBank, Scene};
+use lienzo_core::{compose, director, render_offline, write_wav, EngineOptions, SampleBank, Scene};
+use std::sync::Arc;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -59,9 +60,9 @@ fn main() -> Result<()> {
         Cmd::Render { scene, out, seconds, assets, wet } => {
             let sc = load_scene(&scene)?;
             let t0 = std::time::Instant::now();
-            let bank = SampleBank::load(&assets).context("cargando muestras")?;
+            let bank = Arc::new(SampleBank::load(&assets).context("cargando muestras")?);
             let ev = compose(&sc, seconds);
-            let audio = render(&ev, &bank, &RenderOptions { seconds, wet, ..Default::default() }, sc.seed);
+            let audio = render_offline(bank, &sc, seconds, EngineOptions { wet, ..Default::default() });
             write_wav(&out, &audio)?;
             println!(
                 "{} · {:.0} s · {} eventos · {:.1} s de render",

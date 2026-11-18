@@ -7,6 +7,7 @@
 
 pub mod brush;
 pub mod director;
+pub mod engine;
 pub mod motif;
 pub mod render;
 pub mod rng;
@@ -15,5 +16,6 @@ pub mod theory;
 pub mod variation;
 
 pub use director::{compose, Event};
-pub use render::{render, write_wav, RenderOptions, SampleBank};
+pub use engine::{render_offline, Engine, EngineOptions};
+pub use render::{write_wav, SampleBank, SR};
 pub use scene::{Brush, Point, Scene, Stroke};
