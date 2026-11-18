@@ -10,6 +10,8 @@ use std::sync::{Arc, Mutex};
 pub enum Msg {
     /// Escena nueva; si trae índice, ese trazo suena de inmediato.
     Scene(Scene, Option<usize>),
+    /// Un elemento actúa: su motivo suena ahora.
+    Play(usize),
 }
 
 #[derive(Resource)]
@@ -21,6 +23,10 @@ pub struct AudioLink {
 impl AudioLink {
     pub fn set_scene(&self, scene: Scene, new_stroke: Option<usize>) {
         let _ = self.tx.send(Msg::Scene(scene, new_stroke));
+    }
+
+    pub fn play(&self, index: usize) {
+        let _ = self.tx.send(Msg::Play(index));
     }
 
     pub fn now_seconds(&self) -> f64 {
@@ -86,6 +92,7 @@ pub fn start(bank: Arc<SampleBank>, scene: Scene) -> anyhow::Result<AudioLink> {
                                         e.play_stroke_now(i);
                                     }
                                 }
+                                Msg::Play(i) => e.play_stroke_now(i),
                             }
                         }
                         e.process(&mut scratch);

@@ -12,6 +12,8 @@ pub struct Orbit {
     pub distance: f32,
     /// Deriva automática (modo contemplación).
     pub drift: bool,
+    /// Segundos desde la última órbita manual.
+    pub idle: f32,
 }
 
 impl Default for Orbit {
@@ -22,6 +24,7 @@ impl Default for Orbit {
             pitch: 0.12,
             distance: 15.0,
             drift: true,
+            idle: 99.0,
         }
     }
 }
@@ -49,12 +52,14 @@ pub fn control(
     if buttons.pressed(MouseButton::Right) || buttons.pressed(MouseButton::Middle) {
         o.yaw -= delta.x * 0.004;
         o.pitch += delta.y * 0.004;
-        o.drift = false;
+        o.idle = 0.0;
+    } else {
+        o.idle += time.delta_secs();
     }
     for w in wheel.read() {
         o.distance -= w.y * 0.8;
     }
-    if o.drift {
+    if o.drift && o.idle > 8.0 {
         o.yaw += 0.025 * time.delta_secs() * (time.elapsed_secs() * 0.07).cos();
     }
     o.yaw = o.yaw.clamp(-YAW_LIMIT, YAW_LIMIT);

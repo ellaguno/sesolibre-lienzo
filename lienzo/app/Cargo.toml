@@ -12,7 +12,7 @@ path = "src/main.rs"
 lienzo-core = { path = "../core" }
 bevy = { version = "0.20", default-features = false, features = [
     "bevy_window", "bevy_winit", "bevy_render", "bevy_core_pipeline", "bevy_pbr",
-    "bevy_asset", "bevy_log", "bevy_post_process", "png", "x11", "wayland",
+    "bevy_asset", "bevy_log", "bevy_post_process", "bevy_ui", "bevy_ui_render", "bevy_text", "default_font", "bevy_picking", "png", "x11", "wayland",
     "multi_threaded", "std", "async_executor",
 ] }
 cpal = "0.18"

@@ -21,8 +21,9 @@ cd lienzo && cargo run -p lienzo-app --release -- obra.json
 | Plano de dibujo (pinceles de agua) | `[` más cerca · `]` más lejos |
 | Deshacer / vaciar | `Z` / `C` |
 | Guardar | `S` (al archivo dado como argumento, o `obra.json`) |
+| Contemplar | `A` o `Esc`, o el botón de la paleta. Sin paleta, la cámara deriva; tocar un elemento lo hace actuar |
 
-El título de la ventana muestra el pincel, el plano y el número de trazos. Si el archivo
+La paleta de pinceles está abajo; el texto de ayuda arriba a la izquierda. Si el archivo
 dado como argumento no existe, abre una obra vacía y la guardará ahí. Busca la raíz del
 proyecto subiendo desde el directorio actual hasta encontrar `assets/manifest.toml`.
 

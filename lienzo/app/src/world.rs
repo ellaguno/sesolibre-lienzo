@@ -65,17 +65,19 @@ pub fn setup(
 
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
 
-    // fondo: un degradado enorme detrás de todo, sin niebla
+    // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
+    // Gire a donde gire la cámara, siempre hay agua.
     let backdrop = materials.add(StandardMaterial {
         base_color_texture: Some(images.add(textures::backdrop())),
         unlit: true,
         fog_enabled: false,
+        cull_mode: Some(bevy::render::render_resource::Face::Front),
         ..default()
     });
     commands.spawn((
-        Mesh3d(quad.clone()),
+        Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop),
-        Transform::from_xyz(0.0, 8.0, -28.0).with_scale(Vec3::new(120.0, 50.0, 1.0)),
+        Transform::from_xyz(0.0, -20.0, 0.0),
     ));
 
     // suelo
@@ -86,7 +88,7 @@ pub fn setup(
         ..default()
     });
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(60.0, 60.0))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(140.0, 140.0))),
         MeshMaterial3d(sand),
         Transform::from_xyz(0.0, 0.0, -6.0),
     ));

@@ -14,18 +14,21 @@ use lienzo_core::{Brush, Stroke};
 #[derive(Resource)]
 pub struct DrawState {
     pub brush: Brush,
+    /// Modo contemplación: sin paleta, la cámara deriva, tocar hace actuar.
+    pub contemplate: bool,
     /// Distancia del plano de dibujo a la cámara, en unidades de mundo.
     pub depth: f32,
     points: Vec<Vec3>,
     started: Option<f64>,
     preview: Vec<Entity>,
-    title_dirty: bool,
+    pub title_dirty: bool,
 }
 
 impl Default for DrawState {
     fn default() -> Self {
         DrawState {
             brush: Brush::Kelp,
+            contemplate: false,
             depth: 15.0,
             points: vec![],
             started: None,
@@ -70,6 +73,10 @@ pub fn keys(
             st.brush = Brush::ALL[i];
             st.title_dirty = true;
         }
+    }
+    if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::Escape) {
+        st.contemplate = !st.contemplate;
+        st.title_dirty = true;
     }
     if keys.just_pressed(KeyCode::BracketLeft) {
         st.depth = (st.depth - 1.0).max(4.0);
@@ -170,6 +177,15 @@ pub fn draw(
     };
     let brush = st.brush;
     let depth = st.depth;
+    if st.contemplate {
+        return;
+    }
+    // la paleta ocupa la franja inferior: ahí no se dibuja
+    if let Some(c) = window.cursor_position() {
+        if c.y > window.height() - crate::ui::PALETTE_H && st.started.is_none() {
+            return;
+        }
+    }
 
     if buttons.just_pressed(MouseButton::Left) {
         st.points.clear();
@@ -231,7 +247,45 @@ pub fn draw(
     }
 }
 
-/// El título de la ventana es la UI por ahora.
+/// En contemplación, tocar un elemento lo hace actuar: suena su motivo y la
+/// carta da un pequeño pulso. Se elige la carta más cercana al cursor en pantalla.
+pub fn touch(
+    buttons: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
+    st: Res<DrawState>,
+    link: Res<crate::audio::AudioLink>,
+    mut cards: Query<(&GlobalTransform, &Owned, &mut cards::Card)>,
+) {
+    if !st.contemplate || !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+    let (Ok(window), Ok((cam, cam_tf))) = (windows.single(), cams.single()) else {
+        return;
+    };
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
+    let mut best: Option<(f32, usize)> = None;
+    for (tf, owned, _) in cards.iter() {
+        if let Ok(p) = cam.world_to_viewport(cam_tf, tf.translation()) {
+            let d = p.distance(cursor);
+            if d < 60.0 && best.map(|b| d < b.0).unwrap_or(true) {
+                best = Some((d, owned.0));
+            }
+        }
+    }
+    if let Some((_, index)) = best {
+        link.play(index);
+        for (_, owned, mut card) in cards.iter_mut() {
+            if owned.0 == index {
+                card.pulse = 1.0;
+            }
+        }
+    }
+}
+
+/// El título de la ventana resume el estado.
 pub fn title(
     mut st: ResMut<DrawState>,
     obra: Res<Obra>,
@@ -242,12 +296,18 @@ pub fn title(
     }
     st.title_dirty = false;
     if let Ok(mut w) = windows.single_mut() {
-        w.title = format!(
-            "Lienzo — {} [{}]  ·  plano a {:.0}  ·  {} trazos  ·  1-8 pincel · [ ] plano · Z deshacer · C vaciar · S guardar",
-            brush_name(st.brush),
-            Brush::ALL.iter().position(|b| *b == st.brush).unwrap() + 1,
-            st.depth,
-            obra.scene.strokes.len()
-        );
+        w.title = if st.contemplate {
+            format!(
+                "Lienzo — contemplación · {} trazos · toca un elemento · A vuelve a dibujar",
+                obra.scene.strokes.len()
+            )
+        } else {
+            format!(
+                "Lienzo — {} · plano a {:.0} · {} trazos",
+                brush_name(st.brush),
+                st.depth,
+                obra.scene.strokes.len()
+            )
+        };
     }
 }

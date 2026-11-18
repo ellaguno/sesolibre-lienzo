@@ -50,7 +50,7 @@ pub fn ray() -> Image {
 /// Fondo: degradado vertical de la superficie al abismo.
 pub fn backdrop() -> Image {
     make(16, 256, |_, v| {
-        let t = v.powf(1.3);
+        let t = (v * 1.6).clamp(0.0, 1.0).powf(1.2);
         let top = [0.11, 0.36, 0.50];
         let bottom = [0.012, 0.04, 0.11];
         [

@@ -3,7 +3,7 @@
 
 use crate::world::{to_world, Billboard, Common};
 use bevy::prelude::*;
-use lienzo_core::{Brush, Scene, Stroke};
+use lienzo_core::{Brush, Stroke};
 use std::collections::HashMap;
 
 #[derive(Resource, Default)]
@@ -65,6 +65,9 @@ pub struct Card {
     pub phase: f32,
     pub base: Vec3,
     pub flip: bool,
+    /// 1.0 justo al tocar; decae a 0.
+    pub pulse: f32,
+    pub size: Vec2,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -142,6 +145,8 @@ fn spawn_card(
             phase,
             base,
             flip,
+            pulse: 0.0,
+            size: Vec2::new(w, height),
         },
         Owned(stroke),
         Billboard,
@@ -162,9 +167,9 @@ pub fn spawn_stroke(
     let floor = |v: Vec3| Vec3::new(v.x, 0.0, v.z);
     match stroke.brush {
         Brush::Kelp => {
-            for (k, (p, _)) in along(stroke, 0.55).into_iter().enumerate() {
-                let height = 1.6 + 1.6 * h(k);
-                let jitter = Vec3::new(h(k + 100) - 0.5, 0.0, h(k + 200) - 0.5) * 0.4;
+            for (k, (p, _)) in along(stroke, 0.75).into_iter().enumerate() {
+                let height = 0.9 + 0.8 * h(k);
+                let jitter = Vec3::new(h(k + 100) - 0.5, 0.0, h(k + 200) - 0.5) * 0.5;
                 spawn_card(
                     commands,
                     common,
@@ -220,7 +225,7 @@ pub fn spawn_stroke(
         }
         Brush::Cardumen => {
             let names = ["pez_a_1", "pez_a_2", "pez_a_3"];
-            for (k, (p, dir)) in along(stroke, 0.42).into_iter().enumerate() {
+            for (k, (p, dir)) in along(stroke, 0.5).into_iter().enumerate() {
                 let jitter = Vec3::new(0.0, h(k + 50) - 0.5, h(k + 60) - 0.5) * 0.35;
                 spawn_card(
                     commands,
@@ -268,6 +273,8 @@ pub fn spawn_stroke(
                         phase: h(k + 9) * 6.28,
                         base: p,
                         flip: false,
+                        pulse: 0.0,
+                        size: Vec2::splat(s),
                     },
                     Owned(index),
                     Billboard,
@@ -333,9 +340,14 @@ pub fn spawn_scene(
 }
 
 /// Todo vive: el kelp se mece, los peces nadan, la medusa pulsa, las burbujas suben.
-pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &Card)>) {
+pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &mut Card)>) {
     let t = time.elapsed_secs();
-    for (mut tf, c) in q.iter_mut() {
+    for (mut tf, mut c) in q.iter_mut() {
+        if c.pulse > 0.0 {
+            c.pulse = (c.pulse - time.delta_secs() * 1.6).max(0.0);
+        }
+        let k = 1.0 + 0.18 * (c.pulse * std::f32::consts::PI).sin();
+        tf.scale = Vec3::new(c.size.x * k, c.size.y * k, 1.0);
         match c.kind {
             Motion::Sway => {
                 let a = (t * 0.55 + c.phase).sin() * 0.07;
@@ -350,9 +362,8 @@ pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &Card)>) {
             Motion::Bob => {
                 tf.translation.y = c.base.y + (t * 0.5 + c.phase).sin() * 0.25;
                 let s = 1.0 + (t * 1.1 + c.phase).sin() * 0.04;
-                tf.scale.x = tf.scale.x.signum()
-                    * tf.scale.x.abs().max(1e-3)
-                    * (s / (1.0 + (t * 1.1 + c.phase - 0.016).sin() * 0.04));
+                tf.scale.x *= s;
+                tf.scale.y /= s;
             }
             Motion::Rise => {
                 let y = (c.base.y + (t * 0.35 + c.phase) * 0.6) % 5.5;

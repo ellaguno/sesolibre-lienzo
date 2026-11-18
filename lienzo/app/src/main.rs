@@ -5,6 +5,7 @@ mod cards;
 mod draw;
 mod orbit;
 mod textures;
+mod ui;
 mod world;
 
 use bevy::prelude::*;
@@ -74,7 +75,11 @@ fn main() -> anyhow::Result<()> {
         .init_resource::<draw::DrawState>()
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
-        .add_systems(Startup, (world::setup, cards::spawn_scene).chain())
+        .add_systems(
+            Startup,
+            (world::setup, cards::spawn_scene, ui::setup).chain(),
+        )
+        .add_observer(ui::on_click)
         .add_systems(
             Update,
             (
