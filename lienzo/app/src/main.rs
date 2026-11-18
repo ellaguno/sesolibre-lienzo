@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let bank = Arc::new(SampleBank::load(&assets_dir.join("audio"))?);
-    let link = audio::start(bank, scene.clone())?;
+    let link = audio::start(bank.clone(), scene.clone())?;
 
     App::new()
         .add_plugins(
@@ -76,6 +76,8 @@ fn main() -> anyhow::Result<()> {
         .init_resource::<draw::DrawState>()
         .init_resource::<gallery::Gallery>()
         .init_resource::<gallery::Pending>()
+        .init_resource::<gallery::Exporting>()
+        .insert_resource(gallery::Bank(bank))
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
         .add_systems(

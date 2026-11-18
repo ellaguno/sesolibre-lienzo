@@ -22,6 +22,7 @@ cd lienzo && cargo run -p lienzo-app --release -- obra.json
 | Deshacer / vaciar | `Z` / `C` |
 | Guardar / nueva / galería | `S` / `N` / `G` (o los botones). Las obras viven en `~/.local/share/lienzo/obras/` (o `$LIENZO_OBRAS`) |
 | Título | `T`, escribe, `Enter` |
+| Exportar audio | `E` (o el botón de la galería): guarda y renderiza 3 min a WAV junto al JSON, en segundo plano |
 | Contemplar | `A` o `Esc`, o el botón de la paleta. Sin paleta, la cámara deriva; tocar un elemento lo hace actuar |
 
 La paleta de pinceles está abajo; el texto de ayuda arriba a la izquierda. Si el archivo

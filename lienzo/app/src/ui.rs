@@ -167,7 +167,7 @@ pub fn refresh(
             )
         } else {
             format!(
-                "{} · plano a {:.0} ([ ] ajusta) · izquierdo dibuja · derecho orbita · Z deshacer · C vaciar · S guardar · N nueva · G galería · A contemplar",
+                "{} · plano a {:.0} ([ ] ajusta) · izquierdo dibuja · derecho orbita · Z deshacer · C vaciar · S guardar · E exportar audio · N nueva · G galería · A contemplar",
                 brush_name(st.brush),
                 st.depth
             )

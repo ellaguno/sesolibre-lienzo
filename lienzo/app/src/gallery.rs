@@ -49,6 +49,7 @@ pub enum GalleryAction {
     Open(PathBuf),
     New,
     Save,
+    Export,
     Close,
 }
 
@@ -192,6 +193,7 @@ pub fn setup(mut commands: Commands) {
             .with_children(|row| {
                 button(row, GalleryAction::New, "nueva obra");
                 button(row, GalleryAction::Save, "guardar");
+                button(row, GalleryAction::Export, "exportar audio");
                 button(row, GalleryAction::Close, "cerrar");
             });
             p.spawn((
@@ -242,6 +244,7 @@ pub fn on_click(
         GalleryAction::Open(p) => pending.0 = Some(Cmd::Open(p.clone())),
         GalleryAction::New => pending.0 = Some(Cmd::New),
         GalleryAction::Save => pending.0 = Some(Cmd::Save),
+        GalleryAction::Export => pending.0 = Some(Cmd::Export),
         GalleryAction::Close => {
             g.open = false;
         }
@@ -252,7 +255,19 @@ pub enum Cmd {
     Open(PathBuf),
     New,
     Save,
+    Export,
 }
+
+/// Render en curso: el hilo avisa por aquí cuando termina.
+#[derive(Resource, Default)]
+pub struct Exporting(
+    pub Option<std::sync::Mutex<std::sync::mpsc::Receiver<Result<PathBuf, String>>>>,
+);
+
+#[derive(Resource)]
+pub struct Bank(pub std::sync::Arc<lienzo_core::SampleBank>);
+
+pub const EXPORT_SECONDS: f64 = 180.0;
 
 /// Órdenes pendientes (de clics u observadores) que se ejecutan en `apply`,
 /// donde hay acceso a todo lo necesario.
@@ -304,6 +319,9 @@ pub fn keys(
     if keys.just_pressed(KeyCode::KeyS) {
         pending.0 = Some(Cmd::Save);
     }
+    if keys.just_pressed(KeyCode::KeyE) {
+        pending.0 = Some(Cmd::Export);
+    }
 }
 
 pub fn apply(
@@ -317,11 +335,55 @@ pub fn apply(
     assets: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut st: ResMut<DrawState>,
+    bank: Res<Bank>,
+    mut exporting: ResMut<Exporting>,
 ) {
+    // ¿terminó un export?
+    let done = exporting
+        .0
+        .as_ref()
+        .and_then(|rx| rx.lock().ok().and_then(|rx| rx.try_recv().ok()));
+    if let Some(r) = done {
+        g.status = match r {
+            Ok(p) => format!("audio exportado: {}", p.display()),
+            Err(e) => format!("no se pudo exportar: {e}"),
+        };
+        exporting.0 = None;
+    }
     let Some(cmd) = pending.0.take() else {
         return;
     };
     match cmd {
+        Cmd::Export => {
+            if exporting.0.is_some() {
+                g.status = "ya hay un export en curso".into();
+            } else {
+                // se guarda primero para que el WAV quede junto al JSON
+                match save(&mut obra) {
+                    Ok(json) => {
+                        let wav = json.with_extension("wav");
+                        let scene = obra.scene.clone();
+                        let bank = bank.0.clone();
+                        let (tx, rx) = std::sync::mpsc::channel();
+                        exporting.0 = Some(std::sync::Mutex::new(rx));
+                        g.status = format!("exportando {:.0} s de audio…", EXPORT_SECONDS);
+                        std::thread::spawn(move || {
+                            let audio = lienzo_core::render_offline(
+                                bank,
+                                &scene,
+                                EXPORT_SECONDS,
+                                Default::default(),
+                            );
+                            let r = lienzo_core::write_wav(&wav, &audio)
+                                .map(|_| wav)
+                                .map_err(|e| e.to_string());
+                            let _ = tx.send(r);
+                        });
+                    }
+                    Err(e) => g.status = format!("no se pudo guardar antes de exportar: {e}"),
+                }
+            }
+        }
         Cmd::Save => match save(&mut obra) {
             Ok(p) => {
                 g.status = format!("guardada: {}", p.file_name().unwrap().to_string_lossy());
