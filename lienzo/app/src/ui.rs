@@ -18,6 +18,7 @@ pub enum Action {
     Pick(Brush),
     Contemplate,
     Undo,
+    Gallery,
 }
 
 #[derive(Component)]
@@ -55,6 +56,7 @@ pub fn setup(mut commands: Commands) {
             }
             spacer(row);
             button(row, Action::Undo, "deshacer");
+            button(row, Action::Gallery, "galería");
             button(row, Action::Contemplate, "contemplar");
         });
     commands.spawn((
@@ -124,6 +126,7 @@ pub fn on_click(
         }
         // deshacer vive en draw::keys; se simula la tecla
         Action::Undo => keys.press(KeyCode::KeyZ),
+        Action::Gallery => keys.press(KeyCode::KeyG),
     }
 }
 
@@ -131,6 +134,7 @@ pub fn on_click(
 pub fn refresh(
     st: Res<DrawState>,
     obra: Res<Obra>,
+    gallery: Res<crate::gallery::Gallery>,
     mut buttons: Query<(&Action, &mut BackgroundColor)>,
     mut root: Query<&mut Node, With<PaletteRoot>>,
     mut hint: Query<&mut Text, With<Hint>>,
@@ -139,7 +143,7 @@ pub fn refresh(
         let on = match action {
             Action::Pick(b) => *b == st.brush,
             Action::Contemplate => st.contemplate,
-            Action::Undo => false,
+            Action::Undo | Action::Gallery => false,
         };
         bg.0 = if on { BTN_ON } else { BTN };
     }
@@ -151,6 +155,11 @@ pub fn refresh(
         };
     }
     if let Ok(mut text) = hint.single_mut() {
+        let titulo = if gallery.editing_title {
+            format!("título: {}_   (Enter termina)", obra.scene.title)
+        } else {
+            format!("{} (T renombra)", crate::gallery::title_of(&obra))
+        };
         let s = if st.contemplate {
             format!(
                 "contemplación · {} trazos · toca un elemento para que actúe · botón derecho orbita · A o Esc vuelve a dibujar",
@@ -158,11 +167,12 @@ pub fn refresh(
             )
         } else {
             format!(
-                "{} · plano a {:.0} ([ ] ajusta) · botón izquierdo dibuja · derecho orbita · Z deshacer · C vaciar · S guardar · A contemplar",
+                "{} · plano a {:.0} ([ ] ajusta) · izquierdo dibuja · derecho orbita · Z deshacer · C vaciar · S guardar · N nueva · G galería · A contemplar",
                 brush_name(st.brush),
                 st.depth
             )
         };
+        let s = format!("{titulo}\n{s}\n{}", gallery.status);
         if text.0 != s {
             text.0 = s;
         }

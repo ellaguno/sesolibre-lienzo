@@ -3,6 +3,7 @@
 mod audio;
 mod cards;
 mod draw;
+mod gallery;
 mod orbit;
 mod textures;
 mod ui;
@@ -73,18 +74,26 @@ fn main() -> anyhow::Result<()> {
             path,
         })
         .init_resource::<draw::DrawState>()
+        .init_resource::<gallery::Gallery>()
+        .init_resource::<gallery::Pending>()
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
         .add_systems(
             Startup,
-            (world::setup, cards::spawn_scene, ui::setup).chain(),
+            (world::setup, cards::spawn_scene, ui::setup, gallery::setup).chain(),
         )
         .add_observer(ui::on_click)
+        .add_observer(gallery::on_click)
         .add_systems(
             Update,
             (
+                gallery::keys,
+                gallery::apply,
+                gallery::refresh,
                 draw::keys,
                 draw::draw,
+                draw::touch,
+                ui::refresh,
                 orbit::control,
                 world::drift_particles,
                 cards::animate,

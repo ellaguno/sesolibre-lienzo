@@ -53,11 +53,15 @@ pub fn brush_name(b: Brush) -> &'static str {
 
 pub fn keys(
     keys: Res<ButtonInput<KeyCode>>,
+    gallery: Res<crate::gallery::Gallery>,
     mut st: ResMut<DrawState>,
     mut obra: ResMut<Obra>,
     mut commands: Commands,
     owned: Query<(Entity, &Owned)>,
 ) {
+    if gallery.editing_title {
+        return;
+    }
     let digits = [
         KeyCode::Digit1,
         KeyCode::Digit2,
@@ -104,17 +108,6 @@ pub fn keys(
         }
         obra.dirty = true;
         st.title_dirty = true;
-    }
-    if keys.just_pressed(KeyCode::KeyS) {
-        let path = obra
-            .path
-            .clone()
-            .unwrap_or_else(|| std::path::PathBuf::from("obra.json"));
-        match std::fs::write(&path, obra.scene.to_json()) {
-            Ok(_) => info!("guardada {}", path.display()),
-            Err(e) => error!("no se pudo guardar {}: {e}", path.display()),
-        }
-        obra.path = Some(path);
     }
 }
 
@@ -166,6 +159,7 @@ pub fn draw(
     cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
     mut st: ResMut<DrawState>,
     mut obra: ResMut<Obra>,
+    gallery: Res<crate::gallery::Gallery>,
     mut commands: Commands,
     common: Res<Common>,
     mut mats: ResMut<SpriteMaterials>,
@@ -177,7 +171,7 @@ pub fn draw(
     };
     let brush = st.brush;
     let depth = st.depth;
-    if st.contemplate {
+    if st.contemplate || gallery.open {
         return;
     }
     // la paleta ocupa la franja inferior: ahí no se dibuja
