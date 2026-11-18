@@ -74,6 +74,14 @@ cd lienzo && cargo ndk --platform 28 -t arm64-v8a build -p lienzo-app --release
 ```
 
 En Android la app es una `cdylib` con `#[bevy_main]` (`app/src/lib.rs`) y la actividad
-nativa de Bevy. **Pendiente para que corra en un teléfono:** cargar muestras y sprites
-desde el APK (hoy se leen del disco buscando `assets/manifest.toml`), comprimir el pack de
-audio (167 MB en WAV → Opus/Vorbis), gestos táctiles y empaquetar con `cargo apk`.
+nativa de Bevy. Muestras, sprites y manifiesto se leen del APK (`ApkSource` +
+`tools/android_assets.sh`, que prepara `lienzo/android/assets/`, 21 MB); las obras se
+guardan en el almacenamiento interno de la app.
+
+```bash
+tools/android_apk.sh            # APK firmado en lienzo/target/release/apk/lienzo.apk
+tools/android_apk.sh install    # y lo instala en el teléfono conectado por adb
+```
+
+La llave de firma vive en `~/.local/share/lienzo/` (fuera del repo). **Pendiente:**
+gestos táctiles (hoy la app responde a ratón y teclado) y probar en un teléfono real.
