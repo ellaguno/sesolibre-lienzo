@@ -61,3 +61,19 @@ Necesita el pack curado en `assets/audio/{instruments,ambience,events}`; se gene
 
 Regla: **el `core` no conoce a Bevy.** La app lo consulta; el render offline y las pruebas
 lo usan directo.
+
+## Android (verificación, Fase 3)
+
+El core y la app compilan y enlazan para `aarch64-linux-android` (NDK 27, API 28 o
+superior porque `cpal` usa AAudio):
+
+```bash
+rustup target add aarch64-linux-android && cargo install cargo-ndk cargo-apk
+export ANDROID_HOME=~/Android/Sdk ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006
+cd lienzo && cargo ndk --platform 28 -t arm64-v8a build -p lienzo-app --release
+```
+
+En Android la app es una `cdylib` con `#[bevy_main]` (`app/src/lib.rs`) y la actividad
+nativa de Bevy. **Pendiente para que corra en un teléfono:** cargar muestras y sprites
+desde el APK (hoy se leen del disco buscando `assets/manifest.toml`), comprimir el pack de
+audio (167 MB en WAV → Opus/Vorbis), gestos táctiles y empaquetar con `cargo apk`.
