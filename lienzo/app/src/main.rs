@@ -2,6 +2,7 @@
 
 mod audio;
 mod cards;
+mod draw;
 mod orbit;
 mod textures;
 mod world;
@@ -17,6 +18,9 @@ use std::sync::Arc;
 pub struct Obra {
     pub scene: Scene,
     pub dirty: bool,
+    /// Índice del trazo recién añadido, para que suene al instante.
+    pub new_stroke: Option<usize>,
+    pub path: Option<PathBuf>,
 }
 
 /// Raíz del proyecto: la carpeta que contiene `assets/manifest.toml`.
@@ -35,8 +39,10 @@ fn project_root() -> PathBuf {
 fn main() -> anyhow::Result<()> {
     let root = project_root();
     let assets_dir = root.join("assets");
-    let scene = match std::env::args().nth(1) {
-        Some(p) => Scene::from_json(&std::fs::read_to_string(&p)?)?,
+    let path = std::env::args().nth(1).map(PathBuf::from);
+    let scene = match &path {
+        Some(p) if p.exists() => Scene::from_json(&std::fs::read_to_string(p)?)?,
+        Some(_) => Scene::new(7),
         None => Scene::demo(),
     };
 
@@ -54,20 +60,42 @@ fn main() -> anyhow::Result<()> {
                     }),
                     ..default()
                 })
-                .set(AssetPlugin { file_path: assets_dir.to_string_lossy().into_owned(), ..default() }),
+                .set(AssetPlugin {
+                    file_path: assets_dir.to_string_lossy().into_owned(),
+                    ..default()
+                }),
         )
-        .insert_resource(Obra { scene, dirty: false })
+        .insert_resource(Obra {
+            scene,
+            dirty: false,
+            new_stroke: None,
+            path,
+        })
+        .init_resource::<draw::DrawState>()
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
         .add_systems(Startup, (world::setup, cards::spawn_scene).chain())
-        .add_systems(Update, (orbit::control, world::drift_particles, cards::animate, world::billboards, sync_audio).chain())
+        .add_systems(
+            Update,
+            (
+                draw::keys,
+                draw::draw,
+                orbit::control,
+                world::drift_particles,
+                cards::animate,
+                world::billboards,
+                draw::title,
+                sync_audio,
+            )
+                .chain(),
+        )
         .run();
     Ok(())
 }
 
 fn sync_audio(mut obra: ResMut<Obra>, link: Res<audio::AudioLink>) {
     if obra.dirty {
-        link.set_scene(obra.scene.clone());
+        link.set_scene(obra.scene.clone(), obra.new_stroke.take());
         obra.dirty = false;
     }
 }

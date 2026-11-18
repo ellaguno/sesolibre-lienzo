@@ -16,7 +16,11 @@ fn make(w: u32, h: u32, f: impl Fn(f32, f32) -> [f32; 4]) -> Image {
         }
     }
     Image::new(
-        Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
         TextureDimension::D2,
         data,
         TextureFormat::Rgba8UnormSrgb,
@@ -49,7 +53,12 @@ pub fn backdrop() -> Image {
         let t = v.powf(1.3);
         let top = [0.11, 0.36, 0.50];
         let bottom = [0.012, 0.04, 0.11];
-        [top[0] * (1.0 - t) + bottom[0] * t, top[1] * (1.0 - t) + bottom[1] * t, top[2] * (1.0 - t) + bottom[2] * t, 1.0]
+        [
+            top[0] * (1.0 - t) + bottom[0] * t,
+            top[1] * (1.0 - t) + bottom[1] * t,
+            top[2] * (1.0 - t) + bottom[2] * t,
+            1.0,
+        ]
     })
 }
 
@@ -69,8 +78,12 @@ pub fn sand() -> Image {
         a * (1.0 - sy) + b * sy
     };
     make(512, 512, move |u, v| {
-        let n = 0.6 * noise(u * 12.0, v * 12.0) + 0.3 * noise(u * 31.0, v * 31.0) + 0.1 * noise(u * 90.0, v * 90.0);
-        let c = ((u * 37.0 + v * 23.0).sin() * (u * 53.0 - v * 31.0).sin() * (u * 19.0 + 2.0).sin()).powi(2);
+        let n = 0.6 * noise(u * 12.0, v * 12.0)
+            + 0.3 * noise(u * 31.0, v * 31.0)
+            + 0.1 * noise(u * 90.0, v * 90.0);
+        let c =
+            ((u * 37.0 + v * 23.0).sin() * (u * 53.0 - v * 31.0).sin() * (u * 19.0 + 2.0).sin())
+                .powi(2);
         let k = 0.75 + 0.35 * n + 0.45 * c;
         [0.22 * k, 0.35 * k, 0.45 * k, 1.0]
     })

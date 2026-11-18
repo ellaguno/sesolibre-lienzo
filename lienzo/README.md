@@ -13,8 +13,18 @@ cd lienzo && cargo run -p lienzo-app --release            # abre la escena demo
 cd lienzo && cargo run -p lienzo-app --release -- obra.json
 ```
 
-Botón derecho o central: orbitar · rueda: acercar. Busca la raíz del proyecto subiendo
-desde el directorio actual hasta encontrar `assets/manifest.toml`.
+| Acción | Control |
+|---|---|
+| Dibujar | botón izquierdo (arrastrar = trazo, clic = toque) |
+| Orbitar / acercar | botón derecho o central / rueda |
+| Pincel | `1`–`8`: Kelp, Coral, Anémona, Cardumen, Medusa, Burbujas, Ballena, Barco |
+| Plano de dibujo (pinceles de agua) | `[` más cerca · `]` más lejos |
+| Deshacer / vaciar | `Z` / `C` |
+| Guardar | `S` (al archivo dado como argumento, o `obra.json`) |
+
+El título de la ventana muestra el pincel, el plano y el número de trazos. Si el archivo
+dado como argumento no existe, abre una obra vacía y la guardará ahí. Busca la raíz del
+proyecto subiendo desde el directorio actual hasta encontrar `assets/manifest.toml`.
 
 El audio en vivo es **el mismo `Engine` del core** corriendo en el hilo de la tarjeta de
 sonido (`app/src/audio.rs`). La app no mezcla nada: le manda escenas y el motor compone y

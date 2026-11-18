@@ -16,7 +16,13 @@ pub struct Orbit {
 
 impl Default for Orbit {
     fn default() -> Self {
-        Orbit { target: Vec3::new(0.0, 2.2, 0.0), yaw: 0.0, pitch: 0.12, distance: 15.0, drift: true }
+        Orbit {
+            target: Vec3::new(0.0, 2.2, 0.0),
+            yaw: 0.0,
+            pitch: 0.12,
+            distance: 15.0,
+            drift: true,
+        }
     }
 }
 
@@ -33,7 +39,9 @@ pub fn control(
     time: Res<Time>,
     mut q: Query<(&mut Orbit, &mut Transform)>,
 ) {
-    let Ok((mut o, mut tf)) = q.single_mut() else { return };
+    let Ok((mut o, mut tf)) = q.single_mut() else {
+        return;
+    };
     let mut delta = Vec2::ZERO;
     for m in motion.read() {
         delta += m.delta;
@@ -54,6 +62,10 @@ pub fn control(
     o.distance = o.distance.clamp(DIST_MIN, DIST_MAX);
 
     let pos = o.target
-        + Vec3::new(o.yaw.sin() * o.pitch.cos(), o.pitch.sin(), o.yaw.cos() * o.pitch.cos()) * o.distance;
+        + Vec3::new(
+            o.yaw.sin() * o.pitch.cos(),
+            o.pitch.sin(),
+            o.yaw.cos() * o.pitch.cos(),
+        ) * o.distance;
     *tf = Transform::from_translation(pos).looking_at(o.target, Vec3::Y);
 }

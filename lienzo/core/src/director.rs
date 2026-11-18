@@ -199,11 +199,30 @@ fn compose_pad(out: &mut Vec<Event>, scene: &Scene, seconds: f64) {
 }
 
 fn compose_ambience(out: &mut Vec<Event>, scene: &Scene) {
-    let bubbles: f32 = scene.strokes.iter().map(|s| spec(s.brush).bubbles).sum::<f32>().min(2.0) / 2.0;
-    let near_surface = scene.strokes.iter().filter(|s| s.centroid().y > 0.75).count() as f32;
-    out.push(Event::Ambience { name: "hydrophone_flow", gain: 1.0 });
-    out.push(Event::Ambience { name: "bubble_flow", gain: 0.25 + 0.6 * bubbles });
-    out.push(Event::Ambience { name: "waves_rocks", gain: (0.15 + 0.2 * near_surface.min(3.0)).min(0.6) });
+    let bubbles: f32 = scene
+        .strokes
+        .iter()
+        .map(|s| spec(s.brush).bubbles)
+        .sum::<f32>()
+        .min(2.0)
+        / 2.0;
+    let near_surface = scene
+        .strokes
+        .iter()
+        .filter(|s| s.centroid().y > 0.75)
+        .count() as f32;
+    out.push(Event::Ambience {
+        name: "hydrophone_flow",
+        gain: 1.0,
+    });
+    out.push(Event::Ambience {
+        name: "bubble_flow",
+        gain: 0.25 + 0.6 * bubbles,
+    });
+    out.push(Event::Ambience {
+        name: "waves_rocks",
+        gain: (0.15 + 0.2 * near_surface.min(3.0)).min(0.6),
+    });
 }
 
 /// La obra como lista de eventos ordenada en el tiempo.
@@ -228,8 +247,14 @@ pub fn describe(scene: &Scene, events: &[Event]) -> String {
         scene.seed,
         events.len()
     );
-    let notes = events.iter().filter(|e| matches!(e, Event::Note { .. })).count();
-    let nat = events.iter().filter(|e| matches!(e, Event::Natural { .. })).count();
+    let notes = events
+        .iter()
+        .filter(|e| matches!(e, Event::Note { .. }))
+        .count();
+    let nat = events
+        .iter()
+        .filter(|e| matches!(e, Event::Natural { .. }))
+        .count();
     s += &format!("  notas {notes} · naturales {nat}\n");
     for (i, st) in scene.strokes.iter().enumerate() {
         let sp = spec(st.brush);

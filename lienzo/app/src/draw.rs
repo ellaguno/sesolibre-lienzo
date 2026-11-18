@@ -1,0 +1,253 @@
+//! El plano de dibujo y los pinceles. Botón izquierdo dibuja; el trazo se
+//! convierte en cartas y en música al soltar. Teclas: 1–8 pincel, [ ] profundidad
+//! del plano, Z deshacer, C vaciar, S guardar.
+
+use crate::cards::{self, Owned, SpriteMaterials};
+use crate::orbit::Orbit;
+use crate::world::{to_core, Common, HALF_W, HEIGHT};
+use crate::Obra;
+use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+use lienzo_core::brush::{spec, Attach};
+use lienzo_core::{Brush, Stroke};
+
+#[derive(Resource)]
+pub struct DrawState {
+    pub brush: Brush,
+    /// Distancia del plano de dibujo a la cámara, en unidades de mundo.
+    pub depth: f32,
+    points: Vec<Vec3>,
+    started: Option<f64>,
+    preview: Vec<Entity>,
+    title_dirty: bool,
+}
+
+impl Default for DrawState {
+    fn default() -> Self {
+        DrawState {
+            brush: Brush::Kelp,
+            depth: 15.0,
+            points: vec![],
+            started: None,
+            preview: vec![],
+            title_dirty: true,
+        }
+    }
+}
+
+pub fn brush_name(b: Brush) -> &'static str {
+    match b {
+        Brush::Kelp => "Kelp",
+        Brush::Coral => "Coral",
+        Brush::Anemona => "Anémona",
+        Brush::Cardumen => "Cardumen",
+        Brush::Medusa => "Medusa",
+        Brush::Burbujas => "Burbujas",
+        Brush::Ballena => "Ballena",
+        Brush::Barco => "Barco",
+    }
+}
+
+pub fn keys(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut st: ResMut<DrawState>,
+    mut obra: ResMut<Obra>,
+    mut commands: Commands,
+    owned: Query<(Entity, &Owned)>,
+) {
+    let digits = [
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
+        KeyCode::Digit6,
+        KeyCode::Digit7,
+        KeyCode::Digit8,
+    ];
+    for (i, k) in digits.iter().enumerate() {
+        if keys.just_pressed(*k) {
+            st.brush = Brush::ALL[i];
+            st.title_dirty = true;
+        }
+    }
+    if keys.just_pressed(KeyCode::BracketLeft) {
+        st.depth = (st.depth - 1.0).max(4.0);
+        st.title_dirty = true;
+    }
+    if keys.just_pressed(KeyCode::BracketRight) {
+        st.depth = (st.depth + 1.0).min(26.0);
+        st.title_dirty = true;
+    }
+    if keys.just_pressed(KeyCode::KeyZ) && !obra.scene.strokes.is_empty() {
+        let last = obra.scene.strokes.len() - 1;
+        obra.scene.strokes.pop();
+        for (e, o) in owned.iter() {
+            if o.0 == last {
+                commands.entity(e).despawn();
+            }
+        }
+        obra.dirty = true;
+        st.title_dirty = true;
+    }
+    if keys.just_pressed(KeyCode::KeyC) {
+        obra.scene.strokes.clear();
+        for (e, _) in owned.iter() {
+            commands.entity(e).despawn();
+        }
+        obra.dirty = true;
+        st.title_dirty = true;
+    }
+    if keys.just_pressed(KeyCode::KeyS) {
+        let path = obra
+            .path
+            .clone()
+            .unwrap_or_else(|| std::path::PathBuf::from("obra.json"));
+        match std::fs::write(&path, obra.scene.to_json()) {
+            Ok(_) => info!("guardada {}", path.display()),
+            Err(e) => error!("no se pudo guardar {}: {e}", path.display()),
+        }
+        obra.path = Some(path);
+    }
+}
+
+/// Dónde cae el cursor según el pincel: en el suelo, o en el plano de dibujo
+/// paralelo a la cámara.
+fn cursor_point(
+    window: &Window,
+    cam: &Camera,
+    cam_tf: &GlobalTransform,
+    brush: Brush,
+    depth: f32,
+) -> Option<Vec3> {
+    let pos = window.cursor_position()?;
+    let ray = cam.viewport_to_world(cam_tf, pos).ok()?;
+    let o = ray.origin;
+    let d: Vec3 = ray.direction.into();
+    let hit = match spec(brush).attach {
+        Attach::Floor => {
+            if d.y.abs() < 1e-5 {
+                return None;
+            }
+            let t = -o.y / d.y;
+            if t < 0.0 {
+                return None;
+            }
+            o + d * t
+        }
+        Attach::Water => {
+            let n: Vec3 = cam_tf.forward().into();
+            let p0 = o + n * depth;
+            let denom = d.dot(n);
+            if denom.abs() < 1e-5 {
+                return None;
+            }
+            o + d * ((p0 - o).dot(n) / denom)
+        }
+    };
+    Some(Vec3::new(
+        hit.x.clamp(-HALF_W, HALF_W),
+        hit.y.clamp(0.0, HEIGHT),
+        hit.z.clamp(-HALF_W, HALF_W),
+    ))
+}
+
+pub fn draw(
+    buttons: Res<ButtonInput<MouseButton>>,
+    time: Res<Time>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
+    mut st: ResMut<DrawState>,
+    mut obra: ResMut<Obra>,
+    mut commands: Commands,
+    common: Res<Common>,
+    mut mats: ResMut<SpriteMaterials>,
+    assets: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let (Ok(window), Ok((cam, cam_tf))) = (windows.single(), cams.single()) else {
+        return;
+    };
+    let brush = st.brush;
+    let depth = st.depth;
+
+    if buttons.just_pressed(MouseButton::Left) {
+        st.points.clear();
+        st.started = Some(time.elapsed_secs_f64());
+    }
+    if buttons.pressed(MouseButton::Left) && st.started.is_some() {
+        if let Some(p) = cursor_point(window, cam, cam_tf, brush, depth) {
+            let far_enough = st
+                .points
+                .last()
+                .map(|l| l.distance(p) > 0.12)
+                .unwrap_or(true);
+            if far_enough {
+                st.points.push(p);
+                let e = commands
+                    .spawn((
+                        Mesh3d(common.quad.clone()),
+                        MeshMaterial3d(common.dot.clone()),
+                        Transform::from_translation(p).with_scale(Vec3::splat(0.18)),
+                        crate::world::Billboard,
+                    ))
+                    .id();
+                st.preview.push(e);
+            }
+        }
+    }
+    if buttons.just_released(MouseButton::Left) {
+        if let Some(t0) = st.started.take() {
+            for e in st.preview.drain(..) {
+                commands.entity(e).despawn();
+            }
+            if st.points.is_empty() {
+                return;
+            }
+            let ms = ((time.elapsed_secs_f64() - t0) * 1000.0).max(60.0) as u32;
+            let pts: Vec<lienzo_core::Point> = st.points.iter().map(|p| to_core(*p)).collect();
+            let is_tap = pts.len() == 1 || ms < 180;
+            let stroke = if is_tap {
+                Stroke::tap(brush, pts[0])
+            } else {
+                Stroke::line(brush, pts, ms)
+            };
+            let index = obra.scene.strokes.len();
+            cards::spawn_stroke(
+                &mut commands,
+                &common,
+                &mut mats,
+                &assets,
+                &mut materials,
+                &stroke,
+                index,
+            );
+            obra.scene.strokes.push(stroke);
+            obra.new_stroke = Some(index);
+            obra.dirty = true;
+            st.title_dirty = true;
+            st.points.clear();
+        }
+    }
+}
+
+/// El título de la ventana es la UI por ahora.
+pub fn title(
+    mut st: ResMut<DrawState>,
+    obra: Res<Obra>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    if !st.title_dirty {
+        return;
+    }
+    st.title_dirty = false;
+    if let Ok(mut w) = windows.single_mut() {
+        w.title = format!(
+            "Lienzo — {} [{}]  ·  plano a {:.0}  ·  {} trazos  ·  1-8 pincel · [ ] plano · Z deshacer · C vaciar · S guardar",
+            brush_name(st.brush),
+            Brush::ALL.iter().position(|b| *b == st.brush).unwrap() + 1,
+            st.depth,
+            obra.scene.strokes.len()
+        );
+    }
+}

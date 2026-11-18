@@ -26,7 +26,14 @@ pub enum Op {
 pub fn apply(m: &Motif, op: Op, rng: &mut Rng) -> Motif {
     match op {
         Op::Transpose(n) => Motif {
-            notes: m.notes.iter().map(|x| Note { degree: x.degree + n, ..x.clone() }).collect(),
+            notes: m
+                .notes
+                .iter()
+                .map(|x| Note {
+                    degree: x.degree + n,
+                    ..x.clone()
+                })
+                .collect(),
             beats: m.beats,
         },
         Op::Octave(n) => apply(m, Op::Transpose(5 * n), rng),
@@ -36,7 +43,10 @@ pub fn apply(m: &Motif, op: Op, rng: &mut Rng) -> Motif {
                 notes: m
                     .notes
                     .iter()
-                    .map(|x| Note { degree: axis - (x.degree - axis), ..x.clone() })
+                    .map(|x| Note {
+                        degree: axis - (x.degree - axis),
+                        ..x.clone()
+                    })
                     .collect(),
                 beats: m.beats,
             }
@@ -45,16 +55,26 @@ pub fn apply(m: &Motif, op: Op, rng: &mut Rng) -> Motif {
             let mut notes: Vec<Note> = m
                 .notes
                 .iter()
-                .map(|x| Note { at: (m.beats - x.at - x.beats).max(0.0), ..x.clone() })
+                .map(|x| Note {
+                    at: (m.beats - x.at - x.beats).max(0.0),
+                    ..x.clone()
+                })
                 .collect();
             notes.sort_by(|a, b| a.at.partial_cmp(&b.at).unwrap());
-            Motif { notes, beats: m.beats }
+            Motif {
+                notes,
+                beats: m.beats,
+            }
         }
         Op::Augment(f) => Motif {
             notes: m
                 .notes
                 .iter()
-                .map(|x| Note { at: x.at * f, beats: x.beats * f, ..x.clone() })
+                .map(|x| Note {
+                    at: x.at * f,
+                    beats: x.beats * f,
+                    ..x.clone()
+                })
                 .collect(),
             beats: m.beats * f,
         },
@@ -71,10 +91,17 @@ pub fn apply(m: &Motif, op: Op, rng: &mut Rng) -> Motif {
         Op::Echo => {
             let mut notes = m.notes.clone();
             for x in &m.notes {
-                notes.push(Note { at: x.at + 0.75, vel: x.vel * 0.45, ..x.clone() });
+                notes.push(Note {
+                    at: x.at + 0.75,
+                    vel: x.vel * 0.45,
+                    ..x.clone()
+                });
             }
             notes.sort_by(|a, b| a.at.partial_cmp(&b.at).unwrap());
-            Motif { notes, beats: m.beats + 0.75 }
+            Motif {
+                notes,
+                beats: m.beats + 0.75,
+            }
         }
     }
 }
@@ -118,7 +145,10 @@ pub fn fit_to_chord(m: &Motif, chord: Chord) -> Motif {
             .map(|x| {
                 let strong = (x.at / 1.0).fract().abs() < 1e-6 && (x.at as i64) % 2 == 0;
                 if strong || x.beats >= 2.0 {
-                    Note { degree: chord.nearest(x.degree), ..x.clone() }
+                    Note {
+                        degree: chord.nearest(x.degree),
+                        ..x.clone()
+                    }
                 } else {
                     x.clone()
                 }
@@ -135,9 +165,24 @@ mod tests {
     fn m() -> Motif {
         Motif {
             notes: vec![
-                Note { degree: 0, at: 0.0, beats: 1.0, vel: 0.8 },
-                Note { degree: 2, at: 1.0, beats: 1.0, vel: 0.8 },
-                Note { degree: 4, at: 2.0, beats: 1.0, vel: 0.8 },
+                Note {
+                    degree: 0,
+                    at: 0.0,
+                    beats: 1.0,
+                    vel: 0.8,
+                },
+                Note {
+                    degree: 2,
+                    at: 1.0,
+                    beats: 1.0,
+                    vel: 0.8,
+                },
+                Note {
+                    degree: 4,
+                    at: 2.0,
+                    beats: 1.0,
+                    vel: 0.8,
+                },
             ],
             beats: 3.0,
         }
@@ -147,14 +192,20 @@ mod tests {
     fn invert_mirrors() {
         let mut r = Rng::new(1);
         let v = apply(&m(), Op::Invert, &mut r);
-        assert_eq!(v.notes.iter().map(|n| n.degree).collect::<Vec<_>>(), vec![0, -2, -4]);
+        assert_eq!(
+            v.notes.iter().map(|n| n.degree).collect::<Vec<_>>(),
+            vec![0, -2, -4]
+        );
     }
 
     #[test]
     fn retrograde_reverses() {
         let mut r = Rng::new(1);
         let v = apply(&m(), Op::Retrograde, &mut r);
-        assert_eq!(v.notes.iter().map(|n| n.degree).collect::<Vec<_>>(), vec![4, 2, 0]);
+        assert_eq!(
+            v.notes.iter().map(|n| n.degree).collect::<Vec<_>>(),
+            vec![4, 2, 0]
+        );
     }
 
     #[test]

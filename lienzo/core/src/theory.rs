@@ -49,10 +49,22 @@ impl Chord {
 /// El ciclo armónico del abismo. Cada acorde dura `CHORD_BEATS` pulsos.
 /// D (0 2 3 = D F# A) · Bm (4 0 2 = B D F#) · Asus (3 0 1 = A D E) · D
 pub const CYCLE: [Chord; 4] = [
-    Chord { name: "D", classes: [0, 2, 3] },
-    Chord { name: "Bm", classes: [4, 0, 2] },
-    Chord { name: "Asus", classes: [3, 0, 1] },
-    Chord { name: "D", classes: [0, 2, 3] },
+    Chord {
+        name: "D",
+        classes: [0, 2, 3],
+    },
+    Chord {
+        name: "Bm",
+        classes: [4, 0, 2],
+    },
+    Chord {
+        name: "Asus",
+        classes: [3, 0, 1],
+    },
+    Chord {
+        name: "D",
+        classes: [0, 2, 3],
+    },
 ];
 pub const CHORD_BEATS: f64 = 32.0;
 

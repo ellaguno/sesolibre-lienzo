@@ -49,7 +49,10 @@ pub fn setup(
         Camera3d::default(),
         Transform::from_xyz(0.0, 3.0, 15.0).looking_at(Vec3::new(0.0, 2.2, 0.0), Vec3::Y),
         Tonemapping::AcesFitted,
-        Bloom { intensity: 0.18, ..Bloom::NATURAL },
+        Bloom {
+            intensity: 0.18,
+            ..Bloom::NATURAL
+        },
         DistanceFog {
             color: Color::srgb(0.05, 0.16, 0.26),
             directional_light_color: Color::NONE,
@@ -132,8 +135,16 @@ pub fn setup(
         commands.spawn((
             Mesh3d(quad.clone()),
             MeshMaterial3d(dot.clone()),
-            Transform::from_xyz(-10.0 + 20.0 * rnd(), 0.2 + 7.0 * rnd(), -12.0 + 18.0 * rnd()).with_scale(Vec3::splat(s)),
-            Particle { speed: 0.05 + 0.12 * rnd(), phase: rnd() * 6.28 },
+            Transform::from_xyz(
+                -10.0 + 20.0 * rnd(),
+                0.2 + 7.0 * rnd(),
+                -12.0 + 18.0 * rnd(),
+            )
+            .with_scale(Vec3::splat(s)),
+            Particle {
+                speed: 0.05 + 0.12 * rnd(),
+                phase: rnd() * 6.28,
+            },
             Billboard,
         ));
     }
@@ -152,7 +163,10 @@ pub fn drift_particles(time: Res<Time>, mut q: Query<(&mut Transform, &Particle)
 }
 
 /// Las cartas miran a la cámara girando solo sobre Y: siempre de pie.
-pub fn billboards(cam: Query<&Transform, (With<Camera3d>, Without<Billboard>)>, mut q: Query<&mut Transform, With<Billboard>>) {
+pub fn billboards(
+    cam: Query<&Transform, (With<Camera3d>, Without<Billboard>)>,
+    mut q: Query<&mut Transform, With<Billboard>>,
+) {
     let Ok(cam) = cam.single() else { return };
     for mut tf in q.iter_mut() {
         let to_cam = cam.translation - tf.translation;

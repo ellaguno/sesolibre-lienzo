@@ -3,10 +3,13 @@
 //! fin, y la app lo alimenta a la tarjeta de sonido bloque a bloque. Lo que se
 //! oye en vivo y lo que se exporta es el mismo código.
 
+use crate::brush::spec;
 use crate::director::{compose, Event};
+use crate::motif;
 use crate::render::{db, depth_cutoff, envelope, pitch, SampleBank, Stereo, SR};
 use crate::rng::Rng;
 use crate::scene::Scene;
+use crate::theory::degree_to_midi;
 use std::sync::Arc;
 
 /// Una nota (o sonido) en curso: su buffer ya remuestreado, envuelto y filtrado.
@@ -26,7 +29,11 @@ struct OnePole {
 impl OnePole {
     fn new(cutoff_hz: f32) -> Self {
         let x = (-2.0 * std::f32::consts::PI * cutoff_hz / SR as f32).exp();
-        OnePole { coef: 1.0 - x, l: 0.0, r: 0.0 }
+        OnePole {
+            coef: 1.0 - x,
+            l: 0.0,
+            r: 0.0,
+        }
     }
 
     #[inline]
@@ -81,8 +88,22 @@ impl ReverbChannel {
         let fb = 0.84f32.powf(1.0 / (seconds / 2.0).max(0.2));
         let scale = |d: usize| d * SR as usize / 44100;
         ReverbChannel {
-            combs: comb_delays.iter().map(|&d| Comb { buf: vec![0.0; scale(d)], i: 0, lp: 0.0, fb }).collect(),
-            allpass: [225usize, 556].iter().map(|&d| AllPass { buf: vec![0.0; scale(d)], i: 0 }).collect(),
+            combs: comb_delays
+                .iter()
+                .map(|&d| Comb {
+                    buf: vec![0.0; scale(d)],
+                    i: 0,
+                    lp: 0.0,
+                    fb,
+                })
+                .collect(),
+            allpass: [225usize, 556]
+                .iter()
+                .map(|&d| AllPass {
+                    buf: vec![0.0; scale(d)],
+                    i: 0,
+                })
+                .collect(),
         }
     }
 
@@ -110,7 +131,11 @@ pub struct EngineOptions {
 
 impl Default for EngineOptions {
     fn default() -> Self {
-        EngineOptions { wet: 0.45, master_lowpass_hz: 7000.0, output_db: 0.0 }
+        EngineOptions {
+            wet: 0.45,
+            master_lowpass_hz: 7000.0,
+            output_db: 0.0,
+        }
     }
 }
 
@@ -138,6 +163,8 @@ pub struct Engine {
     /// Hasta qué segundo hay eventos compuestos.
     horizon: f64,
     scene: Scene,
+    /// Eventos inmediatos (respuesta al gesto), fuera del plan del director.
+    pending: Vec<Event>,
 }
 
 impl Engine {
@@ -157,6 +184,7 @@ impl Engine {
             seed: scene.seed,
             horizon: 0.0,
             scene: scene.clone(),
+            pending: vec![],
         };
         e.set_scene(scene);
         e
@@ -194,7 +222,11 @@ impl Engine {
                         pieces.push((Arc::new(s), g * db(-6.0), pan));
                         next_t.push(now + offset);
                     }
-                    self.ambiences.push(AmbienceLoop { pieces, next_t, gain });
+                    self.ambiences.push(AmbienceLoop {
+                        pieces,
+                        next_t,
+                        gain,
+                    });
                 }
             }
         }
@@ -219,21 +251,44 @@ impl Engine {
 
     fn start_event(&mut self, ev: &Event) {
         let (buf, t, gain, pan) = match ev {
-            Event::Note { t, instrument, midi, vel, dur, pan, depth, .. } => {
+            Event::Note {
+                t,
+                instrument,
+                midi,
+                vel,
+                dur,
+                pan,
+                depth,
+                ..
+            } => {
                 let (near, src) = self.bank.nearest(*instrument, *midi);
                 let (attack, release) = instrument.envelope();
                 let mut buf = pitch(src, (*midi - near) as f32);
-                let hold = if release > 1.0 && attack < 0.1 { None } else { Some(*dur) };
+                let hold = if release > 1.0 && attack < 0.1 {
+                    None
+                } else {
+                    Some(*dur)
+                };
                 buf = envelope(buf, attack, hold, release);
                 let mut lp = OnePole::new(depth_cutoff(*depth));
                 for s in buf.iter_mut() {
                     *s = lp.tick(*s);
                 }
-                let g = vel * db(instrument.gain_db()) * db(-6.0) * (1.0 - 0.25 * (-*depth).max(0.0));
+                let g =
+                    vel * db(instrument.gain_db()) * db(-6.0) * (1.0 - 0.25 * (-*depth).max(0.0));
                 (buf, *t, g, *pan)
             }
-            Event::Natural { t, name, gain, pan, depth, .. } => {
-                let Some(clips) = self.bank.event_clips(name) else { return };
+            Event::Natural {
+                t,
+                name,
+                gain,
+                pan,
+                depth,
+                ..
+            } => {
+                let Some(clips) = self.bank.event_clips(name) else {
+                    return;
+                };
                 let clip = &clips[self.rng.below(clips.len())];
                 let mut buf = clip.clone();
                 let mut lp = OnePole::new(depth_cutoff(*depth).min(2500.0));
@@ -249,7 +304,12 @@ impl Engine {
 
     fn push_voice(&mut self, buf: Arc<Stereo>, t: f64, gain: f32, pan: f32) {
         let theta = (pan.clamp(-1.0, 1.0) + 1.0) * std::f32::consts::FRAC_PI_4;
-        self.voices.push(Voice { buf, start: (t * SR as f64) as usize, gl: gain * theta.cos(), gr: gain * theta.sin() });
+        self.voices.push(Voice {
+            buf,
+            start: (t * SR as f64) as usize,
+            gl: gain * theta.cos(),
+            gr: gain * theta.sin(),
+        });
     }
 
     /// Mezcla el siguiente bloque. Llamar desde el hilo de audio o en bucle
@@ -261,6 +321,16 @@ impl Engine {
 
         if end_s + 30.0 > self.horizon {
             self.extend(self.horizon + 120.0);
+        }
+        if !self.pending.is_empty() {
+            let pend = std::mem::take(&mut self.pending);
+            for ev in pend {
+                if ev.time() < end_s {
+                    self.start_event(&ev);
+                } else {
+                    self.pending.push(ev);
+                }
+            }
         }
         while self.next_event < self.events.len() && self.events[self.next_event].time() < end_s {
             let ev = self.events[self.next_event].clone();
@@ -316,6 +386,46 @@ impl Engine {
         self.clock = block_end;
     }
 
+    /// Toca de inmediato el motivo de un trazo, tal cual, sin variación. Es la
+    /// respuesta al gesto: desde el primer trazo suena algo nuevo.
+    pub fn play_stroke_now(&mut self, index: usize) {
+        let Some(stroke) = self.scene.strokes.get(index) else {
+            return;
+        };
+        let sp = spec(stroke.brush);
+        let now = self.now_seconds() + 0.05;
+        let beat = crate::director::beat_seconds();
+        let c = stroke.centroid();
+        if let (Some(inst), Some(m)) = (
+            sp.instrument,
+            motif::from_stroke(stroke, self.scene.seed, index),
+        ) {
+            for n in &m.notes {
+                let ev = Event::Note {
+                    t: now + n.at * beat,
+                    instrument: inst,
+                    midi: degree_to_midi(n.degree),
+                    vel: n.vel,
+                    dur: n.beats * beat,
+                    pan: c.x.clamp(-1.0, 1.0) * 0.8,
+                    depth: c.z.clamp(-1.0, 1.0),
+                    stroke: Some(index),
+                };
+                self.pending.push(ev);
+            }
+        }
+        if let Some(name) = sp.natural {
+            self.pending.push(Event::Natural {
+                t: now,
+                name,
+                gain: 0.9,
+                pan: c.x * 0.8,
+                depth: c.z,
+                stroke: index,
+            });
+        }
+    }
+
     pub fn active_voices(&self) -> usize {
         self.voices.len()
     }
@@ -323,7 +433,12 @@ impl Engine {
 
 /// Render offline completo: el motor de principio a fin, normalizado a -1 dB
 /// y con fundido final.
-pub fn render_offline(bank: Arc<SampleBank>, scene: &Scene, seconds: f64, opts: EngineOptions) -> Stereo {
+pub fn render_offline(
+    bank: Arc<SampleBank>,
+    scene: &Scene,
+    seconds: f64,
+    opts: EngineOptions,
+) -> Stereo {
     let mut e = Engine::new(bank, scene.clone(), opts);
     let n = (seconds * SR as f64) as usize;
     let mut out = vec![[0.0f32; 2]; n];
@@ -334,11 +449,18 @@ pub fn render_offline(bank: Arc<SampleBank>, scene: &Scene, seconds: f64, opts: 
         e.process(&mut out[i..end]);
         i = end;
     }
-    let peak = out.iter().fold(0.0f32, |m, s| m.max(s[0].abs()).max(s[1].abs()));
+    let peak = out
+        .iter()
+        .fold(0.0f32, |m, s| m.max(s[0].abs()).max(s[1].abs()));
     let norm = db(-1.0) / peak.max(1e-6);
     let fade = (3.0 * SR as f64) as usize;
     for (i, s) in out.iter_mut().enumerate() {
-        let g = norm * if i + fade > n { (n - i) as f32 / fade as f32 } else { 1.0 };
+        let g = norm
+            * if i + fade > n {
+                (n - i) as f32 / fade as f32
+            } else {
+                1.0
+            };
         s[0] *= g;
         s[1] *= g;
     }

@@ -67,11 +67,19 @@ fn default_gesture_ms() -> u32 {
 
 impl Stroke {
     pub fn tap(brush: Brush, p: Point) -> Self {
-        Stroke { brush, points: vec![p], gesture_ms: 150 }
+        Stroke {
+            brush,
+            points: vec![p],
+            gesture_ms: 150,
+        }
     }
 
     pub fn line(brush: Brush, points: Vec<Point>, gesture_ms: u32) -> Self {
-        Stroke { brush, points, gesture_ms }
+        Stroke {
+            brush,
+            points,
+            gesture_ms,
+        }
     }
 
     pub fn length(&self) -> f32 {
@@ -102,7 +110,11 @@ impl Stroke {
                 for w in self.points.windows(2) {
                     let seg = w[0].dist(&w[1]);
                     if acc + seg >= target || seg == 0.0 {
-                        let t = if seg == 0.0 { 0.0 } else { (target - acc) / seg };
+                        let t = if seg == 0.0 {
+                            0.0
+                        } else {
+                            (target - acc) / seg
+                        };
                         return w[0].y + (w[1].y - w[0].y) * t;
                     }
                     acc += seg;
@@ -136,7 +148,13 @@ pub struct Scene {
 
 impl Scene {
     pub fn new(seed: u64) -> Self {
-        Scene { version: 1, world: World::Abismo, seed, title: String::new(), strokes: vec![] }
+        Scene {
+            version: 1,
+            world: World::Abismo,
+            seed,
+            title: String::new(),
+            strokes: vec![],
+        }
     }
 
     pub fn to_json(&self) -> String {
@@ -175,13 +193,29 @@ impl Scene {
             2600,
         ));
         // cardumen: rápido y ondulado
-        s.strokes.push(Stroke::line(Brush::Cardumen, curve(9, -0.3, 0.6, 0.55, 0.18, 0.2), 700));
-        s.strokes.push(Stroke::tap(Brush::Anemona, Point::new(0.1, 0.05, 0.6)));
-        s.strokes.push(Stroke::tap(Brush::Medusa, Point::new(0.6, 0.6, 0.4)));
-        s.strokes.push(Stroke::line(Brush::Coral, curve(5, 0.2, 0.7, 0.05, 0.03, 0.3), 1500));
-        s.strokes.push(Stroke::tap(Brush::Ballena, Point::new(-0.7, 0.8, -0.9)));
-        s.strokes.push(Stroke::tap(Brush::Barco, Point::new(0.7, 0.0, -0.2)));
-        s.strokes.push(Stroke::line(Brush::Burbujas, curve(6, 0.3, 0.35, 0.2, 0.05, 0.5), 900));
+        s.strokes.push(Stroke::line(
+            Brush::Cardumen,
+            curve(9, -0.3, 0.6, 0.55, 0.18, 0.2),
+            700,
+        ));
+        s.strokes
+            .push(Stroke::tap(Brush::Anemona, Point::new(0.1, 0.05, 0.6)));
+        s.strokes
+            .push(Stroke::tap(Brush::Medusa, Point::new(0.6, 0.6, 0.4)));
+        s.strokes.push(Stroke::line(
+            Brush::Coral,
+            curve(5, 0.2, 0.7, 0.05, 0.03, 0.3),
+            1500,
+        ));
+        s.strokes
+            .push(Stroke::tap(Brush::Ballena, Point::new(-0.7, 0.8, -0.9)));
+        s.strokes
+            .push(Stroke::tap(Brush::Barco, Point::new(0.7, 0.0, -0.2)));
+        s.strokes.push(Stroke::line(
+            Brush::Burbujas,
+            curve(6, 0.3, 0.35, 0.2, 0.05, 0.5),
+            900,
+        ));
         s
     }
 }

@@ -20,14 +20,22 @@ pub enum RenderError {
 }
 
 fn read_wav(path: &Path) -> Result<Stereo, RenderError> {
-    let mut r = hound::WavReader::open(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
+    let mut r =
+        hound::WavReader::open(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
     let spec = r.spec();
     if spec.channels != 2 || spec.sample_rate != SR {
-        return Err(RenderError::Format(path.into(), spec.channels, spec.sample_rate));
+        return Err(RenderError::Format(
+            path.into(),
+            spec.channels,
+            spec.sample_rate,
+        ));
     }
     let scale = 1.0 / (1u32 << (spec.bits_per_sample - 1)) as f32;
     let samples: Vec<f32> = match spec.sample_format {
-        hound::SampleFormat::Int => r.samples::<i32>().map(|s| s.unwrap_or(0) as f32 * scale).collect(),
+        hound::SampleFormat::Int => r
+            .samples::<i32>()
+            .map(|s| s.unwrap_or(0) as f32 * scale)
+            .collect(),
         hound::SampleFormat::Float => r.samples::<f32>().map(|s| s.unwrap_or(0.0)).collect(),
     };
     Ok(samples.chunks_exact(2).map(|c| [c[0], c[1]]).collect())
@@ -50,7 +58,11 @@ impl SampleBank {
             if let Ok(rd) = std::fs::read_dir(&d) {
                 for e in rd.flatten() {
                     let p = e.path();
-                    if let Some(midi) = p.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse::<i32>().ok()) {
+                    if let Some(midi) = p
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .and_then(|s| s.parse::<i32>().ok())
+                    {
                         notes.push((midi, read_wav(&p)?));
                     }
                 }
@@ -66,7 +78,10 @@ impl SampleBank {
             for e in rd.flatten() {
                 let p = e.path();
                 if p.extension().map(|x| x == "wav").unwrap_or(false) {
-                    ambience.insert(p.file_stem().unwrap().to_string_lossy().into_owned(), read_wav(&p)?);
+                    ambience.insert(
+                        p.file_stem().unwrap().to_string_lossy().into_owned(),
+                        read_wav(&p)?,
+                    );
                 }
             }
         }
@@ -77,12 +92,19 @@ impl SampleBank {
             for p in paths {
                 if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                     if let Some((name, _)) = stem.rsplit_once('_') {
-                        events.entry(name.to_string()).or_default().push(read_wav(&p)?);
+                        events
+                            .entry(name.to_string())
+                            .or_default()
+                            .push(read_wav(&p)?);
                     }
                 }
             }
         }
-        Ok(SampleBank { instruments, ambience, events })
+        Ok(SampleBank {
+            instruments,
+            ambience,
+            events,
+        })
     }
 
     pub fn ambience(&self, name: &str) -> Option<&Stereo> {
@@ -156,15 +178,22 @@ pub fn depth_cutoff(depth: f32) -> f32 {
 }
 
 pub fn write_wav(path: &Path, audio: &Stereo) -> Result<(), RenderError> {
-    let spec = hound::WavSpec { channels: 2, sample_rate: SR, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
-    let mut w = hound::WavWriter::create(path, spec).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
+    let spec = hound::WavSpec {
+        channels: 2,
+        sample_rate: SR,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut w = hound::WavWriter::create(path, spec)
+        .map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
     for s in audio {
         for c in s {
             w.write_sample((c.clamp(-1.0, 1.0) * 32767.0) as i16)
                 .map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
         }
     }
-    w.finalize().map_err(|e| RenderError::Io(path.into(), e.to_string()))
+    w.finalize()
+        .map_err(|e| RenderError::Io(path.into(), e.to_string()))
 }
 
 #[cfg(test)]

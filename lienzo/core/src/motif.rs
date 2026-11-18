@@ -63,7 +63,8 @@ pub fn from_stroke(stroke: &Stroke, seed: u64, index: usize) -> Option<Motif> {
 
     // Para un toque no hay contorno: la altura del punto da la nota y el resto
     // se improvisa cerca, determinista.
-    let base_from_h = |h: f32| sp.lo_degree + (h.clamp(0.0, 1.0) * sp.span_degrees as f32).round() as i32;
+    let base_from_h =
+        |h: f32| sp.lo_degree + (h.clamp(0.0, 1.0) * sp.span_degrees as f32).round() as i32;
 
     let mut notes = Vec::with_capacity(n);
     let mut t = 0.0;
@@ -77,8 +78,17 @@ pub fn from_stroke(stroke: &Stroke, seed: u64, index: usize) -> Option<Motif> {
             Articulation::Pluck => sp.note_beats,
             Articulation::Chord => sp.note_beats,
         };
-        let at = if sp.articulation == Articulation::Chord { 0.0 } else { t };
-        notes.push(Note { degree: deg, at, beats, vel: vel * (0.92 + 0.08 * rng.f32()) });
+        let at = if sp.articulation == Articulation::Chord {
+            0.0
+        } else {
+            t
+        };
+        notes.push(Note {
+            degree: deg,
+            at,
+            beats,
+            vel: vel * (0.92 + 0.08 * rng.f32()),
+        });
         if sp.articulation != Articulation::Chord {
             // en sustain las notas se encadenan; en pluck llevan su paso
             t += match sp.articulation {
@@ -91,7 +101,10 @@ pub fn from_stroke(stroke: &Stroke, seed: u64, index: usize) -> Option<Motif> {
         Articulation::Chord => sp.note_beats,
         _ => t,
     };
-    Some(Motif { notes, beats: total })
+    Some(Motif {
+        notes,
+        beats: total,
+    })
 }
 
 #[cfg(test)]

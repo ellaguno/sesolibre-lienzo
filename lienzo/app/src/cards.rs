@@ -12,7 +12,12 @@ pub struct SpriteMaterials {
 }
 
 impl SpriteMaterials {
-    fn get(&mut self, name: &'static str, assets: &AssetServer, materials: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+    fn get(
+        &mut self,
+        name: &'static str,
+        assets: &AssetServer,
+        materials: &mut Assets<StandardMaterial>,
+    ) -> Handle<StandardMaterial> {
         self.cache
             .entry(name)
             .or_insert_with(|| {
@@ -75,7 +80,8 @@ pub enum Motion {
 pub struct Owned(pub usize);
 
 fn hash01(a: usize, b: usize) -> f32 {
-    let mut h = (a as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (b as u64).wrapping_mul(0xBF58476D1CE4E5B9);
+    let mut h =
+        (a as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (b as u64).wrapping_mul(0xBF58476D1CE4E5B9);
     h ^= h >> 31;
     h = h.wrapping_mul(0x94D049BB133111EB);
     (h >> 40) as f32 / (1u64 << 24) as f32
@@ -130,7 +136,13 @@ fn spawn_card(
         Mesh3d(common.quad.clone()),
         MeshMaterial3d(mats.get(name, assets, materials)),
         Transform::from_translation(base).with_scale(Vec3::new(w, height, 1.0)),
-        Card { stroke, kind, phase, base, flip },
+        Card {
+            stroke,
+            kind,
+            phase,
+            base,
+            flip,
+        },
         Owned(stroke),
         Billboard,
     ));
@@ -153,30 +165,95 @@ pub fn spawn_stroke(
             for (k, (p, _)) in along(stroke, 0.55).into_iter().enumerate() {
                 let height = 1.6 + 1.6 * h(k);
                 let jitter = Vec3::new(h(k + 100) - 0.5, 0.0, h(k + 200) - 0.5) * 0.4;
-                spawn_card(commands, common, mats, assets, materials, "kelp_hoja", floor(p) + jitter, height, k % 2 == 0, index, Motion::Sway, h(k + 300) * 6.28);
+                spawn_card(
+                    commands,
+                    common,
+                    mats,
+                    assets,
+                    materials,
+                    "kelp_hoja",
+                    floor(p) + jitter,
+                    height,
+                    k % 2 == 0,
+                    index,
+                    Motion::Sway,
+                    h(k + 300) * 6.28,
+                );
             }
         }
         Brush::Coral => {
             let names = ["coral_a_1", "coral_a_2", "coral_b", "coral_b_2"];
             for (k, (p, _)) in along(stroke, 0.9).into_iter().enumerate() {
                 let name = names[(k + (h(k) * 4.0) as usize) % 4];
-                spawn_card(commands, common, mats, assets, materials, name, floor(p), 0.8 + 0.7 * h(k + 1), h(k + 2) > 0.5, index, Motion::Still, 0.0);
+                spawn_card(
+                    commands,
+                    common,
+                    mats,
+                    assets,
+                    materials,
+                    name,
+                    floor(p),
+                    0.8 + 0.7 * h(k + 1),
+                    h(k + 2) > 0.5,
+                    index,
+                    Motion::Still,
+                    0.0,
+                );
             }
         }
         Brush::Anemona => {
             let p = to_world(stroke.points[0]);
-            spawn_card(commands, common, mats, assets, materials, "anemona", floor(p), 0.9 + 0.3 * h(0), false, index, Motion::Still, 0.0);
+            spawn_card(
+                commands,
+                common,
+                mats,
+                assets,
+                materials,
+                "anemona",
+                floor(p),
+                0.9 + 0.3 * h(0),
+                false,
+                index,
+                Motion::Still,
+                0.0,
+            );
         }
         Brush::Cardumen => {
             let names = ["pez_a_1", "pez_a_2", "pez_a_3"];
             for (k, (p, dir)) in along(stroke, 0.42).into_iter().enumerate() {
                 let jitter = Vec3::new(0.0, h(k + 50) - 0.5, h(k + 60) - 0.5) * 0.35;
-                spawn_card(commands, common, mats, assets, materials, names[k % 3], p + jitter, 0.28 + 0.14 * h(k), dir.x < 0.0, index, Motion::Swim, h(k + 70) * 6.28);
+                spawn_card(
+                    commands,
+                    common,
+                    mats,
+                    assets,
+                    materials,
+                    names[k % 3],
+                    p + jitter,
+                    0.28 + 0.14 * h(k),
+                    dir.x < 0.0,
+                    index,
+                    Motion::Swim,
+                    h(k + 70) * 6.28,
+                );
             }
         }
         Brush::Medusa => {
             let p = to_world(stroke.points[0]);
-            spawn_card(commands, common, mats, assets, materials, "medusa", p - Vec3::Y * 0.6, 1.2 + 0.3 * h(0), false, index, Motion::Bob, h(1) * 6.28);
+            spawn_card(
+                commands,
+                common,
+                mats,
+                assets,
+                materials,
+                "medusa",
+                p - Vec3::Y * 0.6,
+                1.2 + 0.3 * h(0),
+                false,
+                index,
+                Motion::Bob,
+                h(1) * 6.28,
+            );
         }
         Brush::Burbujas => {
             for (k, (p, _)) in along(stroke, 0.3).into_iter().enumerate() {
@@ -185,7 +262,13 @@ pub fn spawn_stroke(
                     Mesh3d(common.quad.clone()),
                     MeshMaterial3d(common.dot.clone()),
                     Transform::from_translation(p).with_scale(Vec3::splat(s)),
-                    Card { stroke: index, kind: Motion::Rise, phase: h(k + 9) * 6.28, base: p, flip: false },
+                    Card {
+                        stroke: index,
+                        kind: Motion::Rise,
+                        phase: h(k + 9) * 6.28,
+                        base: p,
+                        flip: false,
+                    },
                     Owned(index),
                     Billboard,
                 ));
@@ -193,11 +276,37 @@ pub fn spawn_stroke(
         }
         Brush::Ballena => {
             let p = to_world(stroke.points[0]);
-            spawn_card(commands, common, mats, assets, materials, "ballena", p - Vec3::Y * 0.8, 1.6, p.x > 0.0, index, Motion::Swim, 0.0);
+            spawn_card(
+                commands,
+                common,
+                mats,
+                assets,
+                materials,
+                "ballena",
+                p - Vec3::Y * 0.8,
+                1.6,
+                p.x > 0.0,
+                index,
+                Motion::Swim,
+                0.0,
+            );
         }
         Brush::Barco => {
             let p = to_world(stroke.points[0]);
-            spawn_card(commands, common, mats, assets, materials, "barco", floor(p), 2.2, p.x < 0.0, index, Motion::Still, 0.0);
+            spawn_card(
+                commands,
+                common,
+                mats,
+                assets,
+                materials,
+                "barco",
+                floor(p),
+                2.2,
+                p.x < 0.0,
+                index,
+                Motion::Still,
+                0.0,
+            );
         }
     }
 }
@@ -211,7 +320,15 @@ pub fn spawn_scene(
     scene: Res<crate::Obra>,
 ) {
     for (i, s) in scene.scene.strokes.iter().enumerate() {
-        spawn_stroke(&mut commands, &common, &mut mats, &assets, &mut materials, s, i);
+        spawn_stroke(
+            &mut commands,
+            &common,
+            &mut mats,
+            &assets,
+            &mut materials,
+            s,
+            i,
+        );
     }
 }
 
@@ -233,7 +350,9 @@ pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &Card)>) {
             Motion::Bob => {
                 tf.translation.y = c.base.y + (t * 0.5 + c.phase).sin() * 0.25;
                 let s = 1.0 + (t * 1.1 + c.phase).sin() * 0.04;
-                tf.scale.x = tf.scale.x.signum() * tf.scale.x.abs().max(1e-3) * (s / (1.0 + (t * 1.1 + c.phase - 0.016).sin() * 0.04));
+                tf.scale.x = tf.scale.x.signum()
+                    * tf.scale.x.abs().max(1e-3)
+                    * (s / (1.0 + (t * 1.1 + c.phase - 0.016).sin() * 0.04));
             }
             Motion::Rise => {
                 let y = (c.base.y + (t * 0.35 + c.phase) * 0.6) % 5.5;
