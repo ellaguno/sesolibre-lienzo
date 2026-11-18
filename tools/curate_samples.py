@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Curación del material crudo → pack que lee el motor (`lienzo/core`).
 
-Salida (todo 48 kHz, 16 bits, estéreo, WAV):
-  assets/audio/instruments/<instrumento>/<midi>.wav   notas, RMS -20 dB, sin silencio inicial
-  assets/audio/ambience/<nombre>.wav                   camas largas, RMS -24 dB
-  assets/audio/events/<nombre>_<nn>.wav                ballena, crujidos, RMS -22 dB
+Salida (todo 48 kHz, estéreo, Ogg Vorbis q5 — el motor lo decodifica con lewton):
+  assets/audio/instruments/<instrumento>/<midi>.ogg   notas, RMS -20 dB, sin silencio inicial
+  assets/audio/ambience/<nombre>.ogg                   camas largas, RMS -24 dB
+  assets/audio/events/<nombre>_<nn>.ogg                ballena, crujidos, RMS -22 dB
+
+Con `--wav` escribe además el WAV sin comprimir (para comparar a oído).
 
 Determinista. Volver a correr sobreescribe. Uso: python3.11 tools/curate_samples.py
 """
@@ -90,9 +92,26 @@ def midi_of(fname):
     return NAMES.index(m.group(1)) + 12 * (int(m.group(2)) + 1)
 
 
+import subprocess
+import sys
+
+KEEP_WAV = "--wav" in sys.argv
+VORBIS_Q = "5"
+
+
 def write(path, d):
+    """`path` llega con .wav; se escribe .ogg (y el .wav solo con --wav)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    sf.write(path, np.clip(d, -1, 1), SR, subtype="PCM_16")
+    tmp = path + ".tmp.wav"
+    sf.write(tmp, np.clip(d, -1, 1), SR, subtype="PCM_16")
+    ogg = path[:-4] + ".ogg"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-c:a", "libvorbis", "-q:a", VORBIS_Q, ogg], check=True)
+    if KEEP_WAV:
+        os.replace(tmp, path)
+    else:
+        os.remove(tmp)
+        if os.path.exists(path):
+            os.remove(path)
 
 
 def main():

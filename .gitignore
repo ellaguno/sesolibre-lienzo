@@ -2,9 +2,7 @@
 assets/audio/raw/
 assets/sprites/raw/
 lienzo/target/
-assets/audio/instruments/
-assets/audio/ambience/
-assets/audio/events/
+assets/audio/**/*.wav
 assets/audio/fase0/*.wav
 *.wav.tmp
 assets/audio/render/

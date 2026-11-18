@@ -9,4 +9,5 @@ description = "Lienzo: escena → motivos → director → audio. Sin UI."
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 hound = "3.5"
+lewton = "0.10"
 thiserror = "2"
