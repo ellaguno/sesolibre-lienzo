@@ -25,7 +25,30 @@ pub struct Obra {
     pub path: Option<PathBuf>,
 }
 
+/// En Android los assets viven dentro del APK y se leen con el AssetManager.
+#[cfg(target_os = "android")]
+pub struct ApkSource;
+
+#[cfg(target_os = "android")]
+impl lienzo_core::AssetSource for ApkSource {
+    fn read(&self, rel: &str) -> Result<Vec<u8>, String> {
+        use std::io::Read;
+        let am = bevy::android::ANDROID_APP
+            .get()
+            .ok_or("ANDROID_APP no inicializado")?
+            .asset_manager();
+        let path = std::ffi::CString::new(format!("audio/{rel}")).map_err(|e| e.to_string())?;
+        let mut asset = am
+            .open(&path)
+            .ok_or_else(|| format!("no está en el APK: audio/{rel}"))?;
+        let mut bytes = Vec::new();
+        asset.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+        Ok(bytes)
+    }
+}
+
 /// Raíz del proyecto: la carpeta que contiene `assets/manifest.toml`.
+#[cfg(not(target_os = "android"))]
 fn project_root() -> PathBuf {
     let mut d = std::env::current_dir().expect("cwd");
     loop {
@@ -46,8 +69,21 @@ pub fn main() {
 }
 
 pub fn run() -> anyhow::Result<()> {
-    let root = project_root();
-    let assets_dir = root.join("assets");
+    #[cfg(not(target_os = "android"))]
+    let (asset_plugin, bank) = {
+        let assets_dir = project_root().join("assets");
+        let bank = SampleBank::load(&assets_dir.join("audio"))?;
+        (
+            AssetPlugin {
+                file_path: assets_dir.to_string_lossy().into_owned(),
+                ..default()
+            },
+            bank,
+        )
+    };
+    #[cfg(target_os = "android")]
+    let (asset_plugin, bank) = (AssetPlugin::default(), SampleBank::load_from(&ApkSource)?);
+    let bank = Arc::new(bank);
     let path = std::env::args().nth(1).map(PathBuf::from);
     let scene = match &path {
         Some(p) if p.exists() => Scene::from_json(&std::fs::read_to_string(p)?)?,
@@ -55,7 +91,6 @@ pub fn run() -> anyhow::Result<()> {
         None => Scene::demo(),
     };
 
-    let bank = Arc::new(SampleBank::load(&assets_dir.join("audio"))?);
     let link = audio::start(bank.clone(), scene.clone())?;
 
     App::new()
@@ -69,10 +104,7 @@ pub fn run() -> anyhow::Result<()> {
                     }),
                     ..default()
                 })
-                .set(AssetPlugin {
-                    file_path: assets_dir.to_string_lossy().into_owned(),
-                    ..default()
-                }),
+                .set(asset_plugin),
         )
         .insert_resource(Obra {
             scene,

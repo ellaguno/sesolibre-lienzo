@@ -31,6 +31,7 @@ bevy = { version = "0.20", default-features = false, features = ["android-native
 package = "org.sesolibre.lienzo"
 build_targets = ["aarch64-linux-android"]
 apk_name = "lienzo"
+assets = "../android/assets"
 
 [package.metadata.android.sdk]
 min_sdk_version = 28

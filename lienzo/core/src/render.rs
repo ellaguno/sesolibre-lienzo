@@ -19,10 +19,25 @@ pub enum RenderError {
     Format(PathBuf, u16, u32),
 }
 
+/// De dónde salen los archivos del pack: disco, APK, red… Solo hace falta
+/// leer bytes por ruta relativa a `assets/audio`; el índice `pack.txt` evita
+/// tener que listar carpetas.
+pub trait AssetSource: Sync {
+    fn read(&self, rel: &str) -> Result<Vec<u8>, String>;
+}
+
+/// Carpeta en disco.
+pub struct FsSource(pub PathBuf);
+
+impl AssetSource for FsSource {
+    fn read(&self, rel: &str) -> Result<Vec<u8>, String> {
+        std::fs::read(self.0.join(rel)).map_err(|e| e.to_string())
+    }
+}
+
 /// Decodifica un Ogg Vorbis (el formato del pack) a estéreo 48 kHz.
-fn read_ogg(path: &Path) -> Result<Stereo, RenderError> {
-    let f = std::fs::File::open(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
-    let mut r = lewton::inside_ogg::OggStreamReader::new(std::io::BufReader::new(f))
+fn read_ogg_bytes(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
+    let mut r = lewton::inside_ogg::OggStreamReader::new(std::io::Cursor::new(bytes))
         .map_err(|e| RenderError::Io(path.into(), format!("{e:?}")))?;
     let ch = r.ident_hdr.audio_channels as u16;
     let sr = r.ident_hdr.audio_sample_rate;
@@ -34,26 +49,31 @@ fn read_ogg(path: &Path) -> Result<Stereo, RenderError> {
         .read_dec_packet_itl()
         .map_err(|e| RenderError::Io(path.into(), format!("{e:?}")))?
     {
-        out.extend(pkt.chunks_exact(2).map(|c| [c[0] as f32 / 32768.0, c[1] as f32 / 32768.0]));
+        out.extend(
+            pkt.chunks_exact(2)
+                .map(|c| [c[0] as f32 / 32768.0, c[1] as f32 / 32768.0]),
+        );
     }
     Ok(out)
 }
 
-/// Lee `.ogg` o `.wav` según la extensión.
-pub fn read_audio(path: &Path) -> Result<Stereo, RenderError> {
+/// Lee `.ogg` o `.wav` según la extensión, desde bytes ya cargados.
+pub fn decode(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
     match path.extension().and_then(|e| e.to_str()) {
-        Some("ogg") => read_ogg(path),
-        _ => read_wav(path),
+        Some("ogg") => read_ogg_bytes(path, bytes),
+        _ => read_wav_bytes(path, bytes),
     }
 }
 
-fn is_audio(p: &Path) -> bool {
-    matches!(p.extension().and_then(|e| e.to_str()), Some("ogg") | Some("wav"))
+/// Lee un archivo de disco (`.ogg` o `.wav`).
+pub fn read_audio(path: &Path) -> Result<Stereo, RenderError> {
+    let bytes = std::fs::read(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
+    decode(path, bytes)
 }
 
-fn read_wav(path: &Path) -> Result<Stereo, RenderError> {
-    let mut r =
-        hound::WavReader::open(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
+fn read_wav_bytes(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
+    let mut r = hound::WavReader::new(std::io::Cursor::new(bytes))
+        .map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
     let spec = r.spec();
     if spec.channels != 2 || spec.sample_rate != SR {
         return Err(RenderError::Format(
@@ -81,75 +101,89 @@ pub struct SampleBank {
 }
 
 impl SampleBank {
-    /// `dir` es `assets/audio`.
+    /// `dir` es `assets/audio` en disco.
     pub fn load(dir: &Path) -> Result<Self, RenderError> {
-        // Los instrumentos se decodifican en paralelo: son 70 archivos Vorbis y
-        // en un teléfono el arranque se nota.
-        let mut instruments = HashMap::new();
-        let decoded: Vec<Result<(Instrument, Vec<(i32, Stereo)>), RenderError>> =
-            std::thread::scope(|sc| {
-                let handles: Vec<_> = Instrument::ALL
-                    .iter()
-                    .map(|inst| {
-                        let d = dir.join("instruments").join(inst.dir());
-                        sc.spawn(move || {
-                            let mut notes = vec![];
-                            if let Ok(rd) = std::fs::read_dir(&d) {
-                                for e in rd.flatten() {
-                                    let p = e.path();
-                                    if !is_audio(&p) {
-                                        continue;
-                                    }
-                                    if let Some(midi) = p
-                                        .file_stem()
-                                        .and_then(|s| s.to_str())
-                                        .and_then(|s| s.parse::<i32>().ok())
-                                    {
-                                        notes.push((midi, read_audio(&p)?));
-                                    }
-                                }
-                            }
-                            if notes.is_empty() {
-                                return Err(RenderError::MissingInstrument(*inst, d));
-                            }
-                            notes.sort_by_key(|(m, _)| *m);
-                            Ok((*inst, notes))
-                        })
+        Self::load_from(&FsSource(dir.to_path_buf()))
+    }
+
+    /// Carga el pack desde cualquier fuente, guiado por `pack.txt`.
+    pub fn load_from(src: &dyn AssetSource) -> Result<Self, RenderError> {
+        let index = src
+            .read("pack.txt")
+            .map_err(|e| RenderError::Io("pack.txt".into(), e))?;
+        let index = String::from_utf8_lossy(&index);
+        let paths: Vec<&str> = index
+            .lines()
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        // Se decodifica en paralelo: ~90 archivos Vorbis y en un teléfono el
+        // arranque se nota.
+        let decoded: Vec<Result<(String, Stereo), RenderError>> = std::thread::scope(|sc| {
+            let workers = 8;
+            let chunks: Vec<Vec<&str>> = (0..workers)
+                .map(|w| paths.iter().copied().skip(w).step_by(workers).collect())
+                .collect();
+            let handles: Vec<_> = chunks
+                .into_iter()
+                .map(|chunk| {
+                    sc.spawn(move || {
+                        chunk
+                            .into_iter()
+                            .map(|rel| {
+                                let bytes =
+                                    src.read(rel).map_err(|e| RenderError::Io(rel.into(), e))?;
+                                Ok((rel.to_string(), decode(Path::new(rel), bytes)?))
+                            })
+                            .collect::<Vec<_>>()
                     })
-                    .collect();
-                handles.into_iter().map(|h| h.join().expect("hilo de decodificación")).collect()
-            });
-        for r in decoded {
-            let (inst, notes) = r?;
-            instruments.insert(inst, notes);
-        }
+                })
+                .collect();
+            handles
+                .into_iter()
+                .flat_map(|h| h.join().expect("hilo de decodificación"))
+                .collect()
+        });
+
+        let mut instruments: HashMap<Instrument, Vec<(i32, Stereo)>> = HashMap::new();
         let mut ambience = HashMap::new();
-        if let Ok(rd) = std::fs::read_dir(dir.join("ambience")) {
-            for e in rd.flatten() {
-                let p = e.path();
-                if is_audio(&p) {
-                    ambience.insert(
-                        p.file_stem().unwrap().to_string_lossy().into_owned(),
-                        read_audio(&p)?,
-                    );
+        let mut events: HashMap<String, Vec<Stereo>> = HashMap::new();
+        let mut decoded: Vec<(String, Stereo)> = decoded.into_iter().collect::<Result<_, _>>()?;
+        decoded.sort_by(|a, b| a.0.cmp(&b.0));
+        for (rel, audio) in decoded {
+            let p = Path::new(&rel);
+            let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            let mut parts = rel.split('/');
+            match parts.next() {
+                Some("instruments") => {
+                    let dir = parts.next().unwrap_or("");
+                    if let (Some(inst), Ok(midi)) = (
+                        Instrument::ALL.iter().find(|i| i.dir() == dir),
+                        stem.parse::<i32>(),
+                    ) {
+                        instruments.entry(*inst).or_default().push((midi, audio));
+                    }
                 }
+                Some("ambience") => {
+                    ambience.insert(stem.to_string(), audio);
+                }
+                Some("events") => {
+                    if let Some((name, _)) = stem.rsplit_once('_') {
+                        events.entry(name.to_string()).or_default().push(audio);
+                    }
+                }
+                _ => {}
             }
         }
-        let mut events: HashMap<String, Vec<Stereo>> = HashMap::new();
-        if let Ok(rd) = std::fs::read_dir(dir.join("events")) {
-            let mut paths: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
-            paths.sort();
-            for p in paths {
-                if !is_audio(&p) {
-                    continue;
-                }
-                if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
-                    if let Some((name, _)) = stem.rsplit_once('_') {
-                        events
-                            .entry(name.to_string())
-                            .or_default()
-                            .push(read_audio(&p)?);
-                    }
+        for inst in Instrument::ALL {
+            match instruments.get_mut(&inst) {
+                Some(notes) if !notes.is_empty() => notes.sort_by_key(|(m, _)| *m),
+                _ => {
+                    return Err(RenderError::MissingInstrument(
+                        inst,
+                        PathBuf::from("instruments").join(inst.dir()),
+                    ))
                 }
             }
         }

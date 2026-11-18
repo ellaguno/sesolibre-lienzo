@@ -99,9 +99,13 @@ KEEP_WAV = "--wav" in sys.argv
 VORBIS_Q = "5"
 
 
+WRITTEN = []
+
+
 def write(path, d):
     """`path` llega con .wav; se escribe .ogg (y el .wav solo con --wav)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    WRITTEN.append(os.path.relpath(path[:-4] + ".ogg", AUDIO))
     tmp = path + ".tmp.wav"
     sf.write(tmp, np.clip(d, -1, 1), SR, subtype="PCM_16")
     ogg = path[:-4] + ".ogg"
@@ -144,7 +148,11 @@ def main():
             write(os.path.join(AUDIO, "events", f"{name}_{i + 1:02d}.wav"), normalize(clip, -22.0))
             n += 1
         print(f"events/{name}: {len(ranges)} clips")
-    print(f"{n} archivos escritos")
+    # El índice del pack: el motor lo lee en vez de listar carpetas, que en un
+    # APK o en el navegador no se puede.
+    with open(os.path.join(AUDIO, "pack.txt"), "w") as f:
+        f.write("\n".join(sorted(WRITTEN)) + "\n")
+    print(f"{n} archivos escritos · índice en pack.txt")
 
 
 if __name__ == "__main__":

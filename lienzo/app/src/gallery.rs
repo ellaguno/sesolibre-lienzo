@@ -19,6 +19,13 @@ pub fn obras_dir() -> PathBuf {
     if let Ok(d) = std::env::var("LIENZO_OBRAS") {
         return PathBuf::from(d);
     }
+    #[cfg(target_os = "android")]
+    if let Some(p) = bevy::android::ANDROID_APP
+        .get()
+        .and_then(|a| a.internal_data_path())
+    {
+        return p.join("obras");
+    }
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     PathBuf::from(home).join(".local/share/lienzo/obras")
 }
