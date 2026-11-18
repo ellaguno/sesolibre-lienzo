@@ -1,0 +1,37 @@
+; Vivero — MVP paso 1
+; Godot 4.7
+
+config_version=5
+
+[application]
+
+config/name="Vivero"
+config/description="Diorama musical: plantar es componer."
+run/main_scene="res://src/main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[autoload]
+
+Conductor="*res://src/core/conductor.gd"
+SoundBank="*res://src/core/sound_bank.gd"
+AIRender="*res://src/core/ai_render.gd"
+
+[display]
+
+; Retrato: el objetivo es móvil. En escritorio la ventana usa la misma relación.
+window/size/viewport_width=540
+window/size/viewport_height=1080
+window/size/window_width_override=440
+window/size/window_height_override=880
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+anti_aliasing/quality/msaa_3d=2
+textures/default_filters/anisotropic_filtering_level=0
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2

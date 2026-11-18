@@ -1,0 +1,105 @@
+# Registro de autoría de todos los assets. Nada entra al build sin estar aquí.
+# `raw` es el material crudo (no versionado); `path` será la versión procesada.
+# Licencias admitidas: CC0-1.0, CC-BY-*, CC-BY-SA-*, dominio público.
+
+# ---------------------------------------------------------------- instrumentos
+
+[[asset]]
+id = "vsco-256"
+kind = "instrument-pack"
+raw = "audio/raw/vsco-256/"
+author = "Sam Gossner / Versilian Studios LLC"
+source = "https://vis.versilstudios.net/ (256-Sample Pack of Orchestral Sounds, 2016)"
+license = "Public-domain-like (README: 'total and eternal public usage, redistribution, and modification'; crédito solicitado, no exigido)"
+contents = "CelloEns, ViolaEns, VlnEns, KSHarp, Vibes, Marimba, LDFlute, Tuba, SGHorn, Timpani, gongs, percusión"
+modified = "pendiente: selección, normalización, Opus"
+
+[[asset]]
+id = "salamander-grand-piano"
+kind = "instrument-pack"
+raw = "audio/raw/salamander/"
+author = "Alexander Holm (remapeo SFZ: kinwie / sfzinstruments)"
+source = "https://github.com/sfzinstruments/SalamanderGrandPiano (original: https://archive.org/details/SalamanderGrandPianoV3)"
+license = "CC-BY-3.0"
+modified = "pendiente: 3-4 capas de velocidad de 16, Opus"
+
+# ---------------------------------------------------------- grabaciones de campo
+
+[[asset]]
+id = "fs-733812-hydrophone-flow"
+kind = "ambience"
+raw = "audio/raw/freesound/733812__salome_lubczanski__hydrophone-underwater-flow.wav"
+author = "Salomé_Lubczanski"
+source = "https://freesound.org/s/733812/"
+license = "CC0-1.0"
+notes = "60 s, mono 96 kHz. Candidato a cama de ambiente principal."
+
+[[asset]]
+id = "fs-705058-waves-underwater-rocks"
+kind = "ambience"
+raw = "audio/raw/freesound/705058__felixblume__sea-waves-underwater-back-and-forth-close-to-the-rocks-with-water-bubbles.wav"
+author = "felix.blume"
+source = "https://freesound.org/s/705058/"
+license = "CC0-1.0"
+notes = "23 s, mono 48 kHz. Oleaje cerca de superficie."
+
+[[asset]]
+id = "fs-852478-bubble-flow-loop"
+kind = "ambience"
+raw = "audio/raw/freesound/852478__kolbyrfx__watrundwtr_underwater-bubble-flow-loop_kolbyr_free-sounds.wav"
+author = "KolbyRFX"
+source = "https://freesound.org/s/852478/"
+license = "CC0-1.0"
+notes = "99 s, estéreo 96 kHz. Loop de burbujas; también fuente de burbujas sueltas."
+
+[[asset]]
+id = "fs-797762-humpback-orcas"
+kind = "event"
+raw = "audio/raw/freesound/797762__raiden04__humpback_whales_and_orcas_ambient_underwater_recording.wav"
+author = "raiden04 (basado en datos de Rychen et al. 2023, © ETH Zürich, CC BY 4.0)"
+source = "https://freesound.org/s/797762/"
+license = "CC-BY-4.0"
+notes = "6 min 54 s, estéreo 48 kHz. Fuente de cantos de ballena para recortar."
+
+[[asset]]
+id = "fs-818587-ship-creaking"
+kind = "event"
+raw = "audio/raw/freesound/818587__designerschoice__woodfric-blue-snowball-microphone-cu_ship-creaking-sound-design_nicholas-judy_tdc.wav"
+author = "designerschoice (Nicholas Judy, TDC)"
+source = "https://freesound.org/s/818587/"
+license = "CC-BY-4.0"
+notes = "76 s, estéreo 44.1 kHz. Crujidos para el barco hundido."
+
+[[asset]]
+id = "fs-121222-underwater-creature"
+kind = "event"
+raw = "audio/raw/freesound/121222__xinaesthete__underwatercreature4.wav"
+author = "xinaesthete"
+source = "https://freesound.org/s/121222/"
+license = "CC-BY-4.0"
+notes = "32 s, estéreo 96 kHz. Criatura; posible voz lejana del abismo."
+
+[[asset]]
+id = "fs-435683-crab-growl"
+kind = "event"
+raw = "audio/raw/freesound/435683__itsthatroboguy__underwater-crab-like-monster-growl.ogg"
+author = "ItsThatRoboGuy"
+source = "https://freesound.org/s/435683/"
+license = "CC0-1.0"
+notes = "21 s, ogg. Probablemente demasiado 'monstruo' para el tono; en reserva."
+
+[[asset]]
+id = "fs-124544-underwater-explosion"
+kind = "event"
+raw = "audio/raw/freesound/124544__cubix__underwater-explosion.wav"
+author = "cubix"
+source = "https://freesound.org/s/124544/"
+license = "CC0-1.0"
+notes = "6 s. Fuera de tono para el abismo; en reserva (quizá como golpe grave filtrado)."
+
+# ------------------------------------------------------------------- excluidos
+# No entran al proyecto. Se registran para no volver a bajarlos.
+#
+# freesound 588310 "Creaking Tension (Ship/Wood) OWI" — WolfOWI — CC-BY-NC-4.0.
+#   Excluido por la cláusula NonCommercial (política del proyecto, ver DISEÑO.md §7).
+#   Archivo borrado de audio/raw/freesound/.

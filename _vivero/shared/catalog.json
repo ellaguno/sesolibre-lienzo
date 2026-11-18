@@ -1,0 +1,906 @@
+{
+  "biomas": {
+    "acuario": {
+      "ground": {
+        "amanecer": "1d3350",
+        "atardecer": "1b2f52",
+        "dia": "12495e",
+        "noche": "06121f"
+      },
+      "ground_glow": 0.3,
+      "layout": "wall",
+      "levels": 5,
+      "nm": "Acuario",
+      "objects": [
+        "coral",
+        "alga",
+        "anemona",
+        "burbuja",
+        "medusa",
+        "pez"
+      ],
+      "reverb_bonus": 0.18,
+      "steps": 16
+    },
+    "bosque": {
+      "ground": {
+        "amanecer": "3b3048",
+        "atardecer": "45252c",
+        "dia": "24463a",
+        "noche": "121c2e"
+      },
+      "layout": "radial",
+      "levels": 5,
+      "nm": "Bosque",
+      "objects": [
+        "arbol",
+        "hongo",
+        "helecho",
+        "arbusto",
+        "flor",
+        "luciernaga",
+        "piedra"
+      ],
+      "reverb_bonus": 0.0,
+      "steps": 16
+    },
+    "cielo": {
+      "ground": {
+        "amanecer": "3a3050",
+        "atardecer": "3d2740",
+        "dia": "2b4a6b",
+        "noche": "070a16"
+      },
+      "ground_glow": 0.14,
+      "layout": "dome",
+      "levels": 5,
+      "nm": "Cielo",
+      "objects": [
+        "nube",
+        "luna",
+        "estrella",
+        "cometa",
+        "meteoro"
+      ],
+      "reverb_bonus": 0.3,
+      "steps": 20
+    },
+    "ciudad": {
+      "ground": {
+        "amanecer": "2e2a33",
+        "atardecer": "33262a",
+        "dia": "3a3a3c",
+        "noche": "10131c"
+      },
+      "layout": "field",
+      "levels": 5,
+      "nm": "Ciudad",
+      "objects": [
+        "torre",
+        "casa",
+        "antena",
+        "farola",
+        "arbusto",
+        "luciernaga"
+      ],
+      "reverb_bonus": -0.14,
+      "steps": 16
+    },
+    "interior": {
+      "ground": {
+        "amanecer": "463c34",
+        "atardecer": "4a3830",
+        "dia": "544a40",
+        "noche": "241f1e"
+      },
+      "layout": "wall",
+      "levels": 5,
+      "nm": "Interior",
+      "objects": [
+        "lampara",
+        "maceta",
+        "radio",
+        "libro",
+        "vela",
+        "reloj"
+      ],
+      "reverb_bonus": -0.2,
+      "steps": 16
+    },
+    "mar": {
+      "ground": {
+        "amanecer": "26405e",
+        "atardecer": "2b3a58",
+        "dia": "1c5c72",
+        "noche": "081422"
+      },
+      "ground_glow": 0.34,
+      "layout": "field",
+      "levels": 5,
+      "nm": "Mar",
+      "objects": [
+        "faro",
+        "barca",
+        "boya",
+        "gaviota",
+        "ola",
+        "roca_mar"
+      ],
+      "reverb_bonus": 0.22,
+      "steps": 12
+    },
+    "selva": {
+      "ground": {
+        "amanecer": "2f3a2a",
+        "atardecer": "3a2f22",
+        "dia": "1f4028",
+        "noche": "0f1a15"
+      },
+      "layout": "radial",
+      "levels": 5,
+      "nm": "Selva",
+      "objects": [
+        "ceiba",
+        "bambu",
+        "liana",
+        "orquidea",
+        "ave",
+        "rana"
+      ],
+      "reverb_bonus": -0.06,
+      "steps": 12
+    }
+  },
+  "capas": {
+    "aire_frac": 0.09,
+    "aire_min": 6,
+    "drone_frac": 0.05,
+    "drone_min": 4,
+    "pulso_frac": 0.28,
+    "pulso_min": 12
+  },
+  "generado_por": "godot-mvp/tools/export_catalog.gd",
+  "momentos": {
+    "amanecer": {
+      "amb": "5c3f57",
+      "bpm": 62,
+      "deg": [
+        0,
+        2,
+        4,
+        7,
+        9
+      ],
+      "nm": "Amanecer",
+      "reverb": 0.52,
+      "root": 62,
+      "scale_nm": "D lidio pentatónico",
+      "sky": "241a33",
+      "sun": "ffd9a0",
+      "sun_energy": 0.75
+    },
+    "atardecer": {
+      "amb": "75383c",
+      "bpm": 68,
+      "deg": [
+        0,
+        3,
+        5,
+        7,
+        10
+      ],
+      "nm": "Atardecer",
+      "reverb": 0.46,
+      "root": 57,
+      "scale_nm": "A menor pentatónica",
+      "sky": "26141d",
+      "sun": "ffb37a",
+      "sun_energy": 0.85
+    },
+    "dia": {
+      "amb": "2f6b57",
+      "bpm": 78,
+      "deg": [
+        0,
+        2,
+        3,
+        5,
+        7
+      ],
+      "nm": "Día",
+      "reverb": 0.34,
+      "root": 62,
+      "scale_nm": "D dórico",
+      "sky": "102b25",
+      "sun": "eaf6cd",
+      "sun_energy": 1.15
+    },
+    "noche": {
+      "amb": "16243f",
+      "bpm": 52,
+      "deg": [
+        0,
+        2,
+        3,
+        7,
+        10
+      ],
+      "nm": "Noche",
+      "reverb": 0.62,
+      "root": 55,
+      "scale_nm": "G eólico",
+      "sky": "05090f",
+      "sun": "9fd8ff",
+      "sun_energy": 0.35
+    }
+  },
+  "musica": {
+    "acuario": {
+      "air": "air_water",
+      "bpm_scale": 0.75,
+      "drone": "drone_deep",
+      "feel": "floating",
+      "root_shift": -5,
+      "scale": [
+        0,
+        3,
+        5,
+        10
+      ],
+      "step_beats": 1.0
+    },
+    "bosque": {
+      "air": "air_loop",
+      "bpm_scale": 1.0,
+      "drone": "drone_loop",
+      "feel": "natural",
+      "root_shift": 0,
+      "scale": [],
+      "step_beats": 0.5
+    },
+    "cielo": {
+      "air": "air_high",
+      "bpm_scale": 0.75,
+      "drone": "drone_open",
+      "feel": "floating",
+      "root_shift": 0,
+      "scale": [
+        0,
+        2,
+        7,
+        9
+      ],
+      "step_beats": 1.0
+    },
+    "ciudad": {
+      "air": "air_dust",
+      "bpm_scale": 1.35,
+      "drone": "drone_room",
+      "feel": "pulsed",
+      "root_shift": 0,
+      "scale": [
+        0,
+        3,
+        5,
+        7,
+        10
+      ],
+      "step_beats": 0.25
+    },
+    "interior": {
+      "air": "air_dust",
+      "bpm_scale": 0.9,
+      "drone": "drone_room",
+      "feel": "natural",
+      "root_shift": -3,
+      "scale": [
+        0,
+        4,
+        5,
+        7,
+        11
+      ],
+      "step_beats": 0.5
+    },
+    "mar": {
+      "air": "air_surf",
+      "bpm_scale": 0.6,
+      "drone": "drone_surge",
+      "feel": "sparse",
+      "root_shift": -7,
+      "scale": [
+        0,
+        5,
+        7
+      ],
+      "step_beats": 1.0
+    },
+    "selva": {
+      "air": "air_loop",
+      "bpm_scale": 1.15,
+      "drone": "drone_loop",
+      "feel": "pulsed",
+      "root_shift": 2,
+      "scale": [
+        0,
+        2,
+        4,
+        6,
+        9
+      ],
+      "step_beats": 0.5
+    }
+  },
+  "objetos": {
+    "alga": {
+      "col": "5fa07a",
+      "db": -13.0,
+      "dur": 4,
+      "nm": "Alga",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "swell_hi",
+      "shape": "kelp",
+      "size": 0.72,
+      "sub": "swell medio"
+    },
+    "anemona": {
+      "col": "c98ad6",
+      "db": -10.0,
+      "dur": 4,
+      "nm": "Anémona",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "glass",
+      "shape": "anemone",
+      "size": 0.66,
+      "sub": "vaso"
+    },
+    "antena": {
+      "col": "b8c0cc",
+      "db": -10.0,
+      "dur": 4,
+      "nm": "Antena",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "metal",
+      "shape": "antenna",
+      "size": 0.62,
+      "sub": "metal"
+    },
+    "arbol": {
+      "col": "5f8f6a",
+      "db": -10.0,
+      "dur": 8,
+      "nm": "Árbol",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "pad",
+      "shape": "pine",
+      "size": 1.0,
+      "sub": "pad · grave"
+    },
+    "arbusto": {
+      "col": "94b563",
+      "db": -8.0,
+      "dur": 2,
+      "nm": "Arbusto",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "marimba",
+      "shape": "bush",
+      "size": 0.74,
+      "sub": "marimba"
+    },
+    "ave": {
+      "col": "f2b544",
+      "db": -13.0,
+      "dur": 2,
+      "nm": "Ave",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "chirp",
+      "shape": "bird",
+      "size": 0.44,
+      "sub": "trino"
+    },
+    "bambu": {
+      "col": "9dbb63",
+      "db": -9.0,
+      "dur": 4,
+      "nm": "Bambú",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "flute",
+      "shape": "bamboo",
+      "size": 0.78,
+      "sub": "flauta"
+    },
+    "barca": {
+      "col": "b0764a",
+      "db": -8.0,
+      "dur": 2,
+      "nm": "Barca",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "marimba",
+      "shape": "boat",
+      "size": 0.72,
+      "sub": "marimba"
+    },
+    "boya": {
+      "col": "e35f4a",
+      "db": -10.0,
+      "dur": 4,
+      "nm": "Boya",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "bell",
+      "shape": "buoy",
+      "size": 0.58,
+      "sub": "campana"
+    },
+    "burbuja": {
+      "col": "9fd8ff",
+      "db": -9.0,
+      "dur": 2,
+      "nm": "Burbuja",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "waterdrop",
+      "shape": "bubble",
+      "size": 0.4,
+      "sub": "gota"
+    },
+    "casa": {
+      "col": "9a8577",
+      "db": -8.0,
+      "dur": 2,
+      "nm": "Casa",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "marimba",
+      "shape": "house",
+      "size": 0.7,
+      "sub": "marimba"
+    },
+    "ceiba": {
+      "col": "4e7d55",
+      "db": -10.0,
+      "dur": 8,
+      "nm": "Ceiba",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "pad",
+      "shape": "ceiba",
+      "size": 1.0,
+      "sub": "pad · grave"
+    },
+    "cometa": {
+      "col": "9fe8ff",
+      "db": -13.0,
+      "dur": 4,
+      "nm": "Cometa",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "shimmer",
+      "shape": "comet",
+      "size": 0.54,
+      "sub": "brillo"
+    },
+    "coral": {
+      "col": "e08a6a",
+      "db": -11.0,
+      "dur": 8,
+      "nm": "Coral",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "swell",
+      "shape": "coral",
+      "size": 1.0,
+      "sub": "swell · grave"
+    },
+    "estrella": {
+      "col": "cfe6ff",
+      "db": -11.0,
+      "dur": 4,
+      "nm": "Estrella",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "glass",
+      "shape": "star",
+      "size": 0.4,
+      "sub": "vaso"
+    },
+    "faro": {
+      "col": "e8e2d4",
+      "db": -13.0,
+      "dur": 8,
+      "nm": "Faro",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "horn",
+      "shape": "lighthouse",
+      "size": 1.0,
+      "sub": "sirena · grave"
+    },
+    "farola": {
+      "col": "d8c9a8",
+      "db": -13.0,
+      "dur": 1,
+      "nm": "Farola",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "click",
+      "shape": "lamp",
+      "size": 0.46,
+      "sub": "percusión"
+    },
+    "flor": {
+      "col": "e8a2b8",
+      "db": -11.0,
+      "dur": 4,
+      "nm": "Flor",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "bell",
+      "shape": "flower",
+      "size": 0.48,
+      "sub": "campana"
+    },
+    "gaviota": {
+      "col": "f0f0f0",
+      "db": -14.0,
+      "dur": 2,
+      "nm": "Gaviota",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "chirp",
+      "shape": "gull",
+      "size": 0.42,
+      "sub": "trino"
+    },
+    "helecho": {
+      "col": "7fae86",
+      "db": -6.0,
+      "dur": 2,
+      "nm": "Helecho",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "pluck",
+      "shape": "fern",
+      "size": 0.66,
+      "sub": "arpa"
+    },
+    "hongo": {
+      "col": "b5738c",
+      "db": -7.0,
+      "deg": [
+        0,
+        4
+      ],
+      "dur": 4,
+      "nm": "Hongo",
+      "oct": -2,
+      "pitched": true,
+      "ref": 36,
+      "sample": "sub",
+      "shape": "mushroom",
+      "size": 0.62,
+      "sub": "sub · pulso"
+    },
+    "lampara": {
+      "col": "c9b48c",
+      "db": -12.0,
+      "dur": 8,
+      "nm": "Lámpara",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "pad",
+      "shape": "floorlamp",
+      "size": 0.94,
+      "sub": "pad · grave"
+    },
+    "liana": {
+      "col": "6d9c6a",
+      "db": -7.0,
+      "dur": 2,
+      "nm": "Liana",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "pluck",
+      "shape": "liana",
+      "size": 0.7,
+      "sub": "arpa"
+    },
+    "libro": {
+      "col": "9a5f6d",
+      "db": -10.0,
+      "dur": 4,
+      "nm": "Libro",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "musicbox",
+      "shape": "book",
+      "size": 0.56,
+      "sub": "caja de música"
+    },
+    "luciernaga": {
+      "col": "f5e6a3",
+      "db": -14.0,
+      "dur": 4,
+      "nm": "Luciérnaga",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "shimmer",
+      "shape": "firefly",
+      "size": 0.34,
+      "sub": "shimmer"
+    },
+    "luna": {
+      "col": "f2ecd0",
+      "db": -12.0,
+      "dur": 8,
+      "nm": "Luna",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "swell_hi",
+      "shape": "moon",
+      "size": 0.86,
+      "sub": "swell medio"
+    },
+    "maceta": {
+      "col": "7fae86",
+      "db": -9.0,
+      "dur": 4,
+      "nm": "Maceta",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "rhodes",
+      "shape": "planter",
+      "size": 0.74,
+      "sub": "eléctrico"
+    },
+    "medusa": {
+      "col": "b7a6f0",
+      "db": -13.0,
+      "dur": 4,
+      "nm": "Medusa",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "shimmer",
+      "shape": "jelly",
+      "size": 0.56,
+      "sub": "brillo"
+    },
+    "meteoro": {
+      "col": "9a8b7a",
+      "db": -13.0,
+      "dur": 1,
+      "nm": "Meteoro",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "click",
+      "shape": "meteor",
+      "size": 0.48,
+      "sub": "percusión"
+    },
+    "nube": {
+      "col": "b9c4de",
+      "db": -12.0,
+      "dur": 8,
+      "nm": "Nube",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "swell",
+      "shape": "cloud",
+      "size": 1.0,
+      "sub": "swell · grave"
+    },
+    "ola": {
+      "col": "8fd0e0",
+      "db": -12.0,
+      "dur": 4,
+      "nm": "Ola",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "wash",
+      "shape": "wave",
+      "size": 0.66,
+      "sub": "rompiente"
+    },
+    "orquidea": {
+      "col": "d98ac0",
+      "db": -11.0,
+      "dur": 4,
+      "nm": "Orquídea",
+      "oct": 1,
+      "pitched": true,
+      "ref": 75,
+      "sample": "bell",
+      "shape": "orchid",
+      "size": 0.52,
+      "sub": "campana"
+    },
+    "pez": {
+      "col": "f0a860",
+      "db": -11.0,
+      "dur": 1,
+      "nm": "Pez",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "blub",
+      "shape": "fish",
+      "size": 0.52,
+      "sub": "percusión"
+    },
+    "piedra": {
+      "col": "8d8d96",
+      "db": -12.0,
+      "dur": 1,
+      "nm": "Piedra",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "perc",
+      "shape": "rock",
+      "size": 0.58,
+      "sub": "percusión"
+    },
+    "radio": {
+      "col": "a8613f",
+      "db": -9.0,
+      "dur": 2,
+      "nm": "Radio",
+      "oct": 0,
+      "pitched": true,
+      "ref": 63,
+      "sample": "marimba",
+      "shape": "radio",
+      "size": 0.66,
+      "sub": "marimba"
+    },
+    "rana": {
+      "col": "7fbf6a",
+      "db": -11.0,
+      "dur": 1,
+      "nm": "Rana",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "tom",
+      "shape": "frog",
+      "size": 0.5,
+      "sub": "percusión"
+    },
+    "reloj": {
+      "col": "b7a98e",
+      "db": -14.0,
+      "dur": 1,
+      "nm": "Reloj",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "tick",
+      "shape": "clock",
+      "size": 0.6,
+      "sub": "percusión"
+    },
+    "roca_mar": {
+      "col": "6f7a80",
+      "db": -12.0,
+      "dur": 1,
+      "nm": "Roca",
+      "oct": 0,
+      "pitched": false,
+      "ref": 0,
+      "sample": "perc",
+      "shape": "rock",
+      "size": 0.62,
+      "sub": "percusión"
+    },
+    "torre": {
+      "col": "6f7a92",
+      "db": -11.0,
+      "dur": 8,
+      "nm": "Torre",
+      "oct": -1,
+      "pitched": true,
+      "ref": 51,
+      "sample": "pad",
+      "shape": "tower",
+      "size": 1.0,
+      "sub": "pad · grave"
+    },
+    "vela": {
+      "col": "ffd9a0",
+      "db": -14.0,
+      "dur": 4,
+      "nm": "Vela",
+      "oct": 2,
+      "pitched": true,
+      "ref": 87,
+      "sample": "shimmer",
+      "shape": "candle",
+      "size": 0.44,
+      "sub": "brillo"
+    }
+  },
+  "orden_biomas": [
+    "bosque",
+    "selva",
+    "acuario",
+    "mar",
+    "cielo",
+    "interior",
+    "ciudad"
+  ],
+  "orden_momentos": [
+    "amanecer",
+    "dia",
+    "atardecer",
+    "noche"
+  ],
+  "paso_en_pulsos": 0.5,
+  "transposicion": {
+    "max": 12,
+    "min": -12
+  },
+  "variacion": {
+    "arco_segundos": 105.0,
+    "deriva_segundos": 74.0,
+    "periodos_corto": [
+      1,
+      2
+    ],
+    "periodos_largo": [
+      2,
+      3,
+      5
+    ],
+    "periodos_medio": [
+      1,
+      2,
+      3
+    ],
+    "prob_caracter": {
+      "floating": 0.78,
+      "natural": 0.82,
+      "pulsed": 0.95,
+      "sparse": 0.7
+    },
+    "repeticion_objetivo_s": 35.0
+  },
+  "version": 2
+}
