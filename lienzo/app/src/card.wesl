@@ -26,6 +26,20 @@ fn caustics(p: vec3<f32>, t: f32) -> f32 {
 @group(3) @binding(0) var<uniform> material: CardMaterial;
 @group(3) @binding(1) var card_texture: texture_2d<f32>;
 @group(3) @binding(2) var card_sampler: sampler;
+@group(3) @binding(3) var caustic_texture: texture_2d<f32>;
+@group(3) @binding(4) var caustic_sampler: sampler;
+
+// Cáusticas reales a dos lecturas: la textura celular se desplaza en dos
+// direcciones y se multiplica; el producto solo brilla donde ambas coinciden,
+// que es como se mueven las redes de luz en un fondo de arena.
+fn caustic_tex(p: vec2<f32>, t: f32) -> f32 {
+    let k = material.extra.y * 0.21;
+    let a = textureSample(caustic_texture, caustic_sampler, p * k + vec2<f32>(t * 0.013, t * 0.021)).r;
+    // la segunda lectura va girada y a otra escala: nada de cuadrícula
+    let q = vec2<f32>(p.x * 0.83 - p.y * 0.56, p.x * 0.56 + p.y * 0.83);
+    let b = textureSample(caustic_texture, caustic_sampler, q * k * 1.61 + vec2<f32>(-t * 0.017, t * 0.009) + vec2<f32>(0.37, 0.61)).r;
+    return min(a, b) * 1.4;
+}
 
 // Oleaje lento de la superficie: tres ondas que se cruzan, en [-1, 1].
 fn waves(p: vec2<f32>, t: f32) -> f32 {
@@ -51,7 +65,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let w = waves(in.world_position.xz, globals.time);
         let window = smoothstep(0.52 + 0.10 * w, 0.78 + 0.10 * w, up);
         let ripple = 0.92 + 0.10 * waves(in.world_position.xz * 2.3 + vec2<f32>(11.0, 5.0), globals.time * 1.3);
-        let sky = material.color.rgb * ripple;
+        // destellos: la red de cáusticas vista desde abajo, y el sol, un disco
+        // suave algo descentrado hacia donde entran los rayos
+        let glitter = caustic_tex(in.world_position.xz * 2.4, globals.time * 1.4) * 0.09;
+        let sun_dir = normalize(vec3<f32>(0.18, 1.0, -0.22));
+        let sun = pow(clamp(dot(to_frag / max(dist, 0.001), sun_dir), 0.0, 1.0), 180.0) * 1.6
+            + pow(clamp(dot(to_frag / max(dist, 0.001), sun_dir), 0.0, 1.0), 12.0) * 0.25;
+        let sky = material.color.rgb * (ripple + glitter + sun);
         let mirror = material.fog_color.rgb * (0.75 + 0.2 * w);
         var s = mix(mirror, sky, window);
         let d = dist * material.params.x * 0.7;
@@ -66,6 +86,18 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         return vec4<f32>(mix(material.fog_color.rgb, material.color.rgb, k), 1.0);
     }
     var c = material.color * textureSample(card_texture, card_sampler, in.uv);
+    if material.extra.z < -0.5 {
+        // rayo de luz: un velo que se desvanece cuando se mira de canto (al
+        // mirar al fondo no se ven franjas, solo cáusticas) y que no tiene
+        // bordes: nunca parece una pared
+        let to_cam = view.world_position - in.world_position.xyz;
+        let near = length(to_cam);
+        let facing = abs(dot(normalize(in.world_normal), to_cam / max(near, 0.001)));
+        // y se disuelve si está encima de la cámara: nunca una barra en la cara
+        // y desde fuera del agua (vista de dibujo) no existen
+        let under = smoothstep(5.0, 3.8, view.world_position.y);
+        c = vec4<f32>(c.rgb, c.a * smoothstep(0.15, 0.7, facing) * smoothstep(1.5, 7.0, near) * under);
+    }
     if material.extra.w > 0.5 {
         // relieve: las laderas que miran a la luz (arriba y un poco al frente)
         // se aclaran; las que se alejan, se oscurecen
@@ -79,7 +111,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if caustic_strength > 0.001 {
         // más luz cerca de la superficie (y alta), casi nada en el abismo
         let height = clamp(in.world_position.y / 5.0, 0.0, 1.0);
-        let light = caustics(in.world_position.xyz, globals.time) * caustic_strength * (0.35 + 0.65 * height);
+        let light = caustic_tex(in.world_position.xz, globals.time) * caustic_strength * (0.35 + 0.65 * height);
         c = vec4<f32>(c.rgb * (1.0 + light) + vec3<f32>(0.6, 0.8, 0.85) * light * 0.25, c.a);
     }
     if material.params.y > 0.5 {

@@ -37,6 +37,62 @@ pub fn soft_dot() -> Image {
     })
 }
 
+/// Cáusticas: textura celular (Worley) *tileable*. Las líneas brillantes son
+/// las fronteras entre celdas (segunda distancia menos primera), que es justo
+/// la forma de la luz que el oleaje concentra en el fondo. En el shader se
+/// muestrea dos veces con desplazamientos opuestos y se multiplica.
+pub fn caustic_tile() -> Image {
+    const N: usize = 256;
+    let mut seed = 2024u32;
+    let mut rnd = move || {
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        (seed >> 8) as f32 / (1u32 << 24) as f32
+    };
+    // dos redes de celdas de distinto tamaño, con puntos muy desordenados:
+    // la mezcla rompe cualquier cuadrícula
+    let layer = |cells: usize, rnd: &mut dyn FnMut() -> f32| -> Vec<(f32, f32)> {
+        (0..cells * cells)
+            .map(|i| {
+                let cx = (i % cells) as f32 / cells as f32;
+                let cy = (i / cells) as f32 / cells as f32;
+                (cx + rnd() * 1.3 / cells as f32, cy + rnd() * 1.3 / cells as f32)
+            })
+            .collect()
+    };
+    let coarse = layer(5, &mut rnd);
+    let fine = layer(9, &mut rnd);
+    let edge_of = |u: f32, v: f32, pts: &[(f32, f32)], cells: f32| -> f32 {
+        let mut f1 = 9.0f32;
+        let mut f2 = 9.0f32;
+        for &(px, py) in pts {
+            let mut dx = (u - px).abs();
+            let mut dy = (v - py).abs();
+            if dx > 0.5 {
+                dx = 1.0 - dx;
+            }
+            if dy > 0.5 {
+                dy = 1.0 - dy;
+            }
+            let d = (dx * dx + dy * dy).sqrt();
+            if d < f1 {
+                f2 = f1;
+                f1 = d;
+            } else if d < f2 {
+                f2 = d;
+            }
+        }
+        (f2 - f1) * cells
+    };
+    make(N as u32, N as u32, move |u, v| {
+        let e1 = edge_of(u, v, &coarse, 5.0);
+        let e2 = edge_of(u, v, &fine, 9.0);
+        let line = |e: f32| (1.0 - e * 3.4).clamp(0.0, 1.0).powf(2.4);
+        let glow = |e: f32| (1.0 - e * 1.2).clamp(0.0, 1.0).powf(3.0) * 0.22;
+        let c = (0.65 * (line(e1) + glow(e1)) + 0.55 * (line(e2) + glow(e2))).min(1.0);
+        [c, c, c, 1.0]
+    })
+}
+
 /// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
 /// color lo pone el material).
 pub fn blob() -> Image {
@@ -95,9 +151,12 @@ fn hsv(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
 /// Rayo de luz: brillante arriba, se funde hacia abajo, bordes suaves.
 pub fn ray() -> Image {
     make(64, 512, |u, v| {
-        let edge = (1.0 - ((u - 0.5).abs() * 2.0)).clamp(0.0, 1.0).powf(1.8);
-        let fall = (1.0 - v).powf(2.4);
-        let a = edge * fall;
+        // perfil gaussiano: sin bordes, solo un velo de luz
+        let d = (u - 0.5) * 2.0;
+        let edge = (-d * d * 5.0).exp() - (-5.0f32).exp();
+        // nace a plena luz en la superficie y se disuelve mucho antes del fondo
+        let fall = (1.0 - (v / 0.34).clamp(0.0, 1.0)).powf(1.5);
+        let a = (edge * fall).max(0.0);
         [0.55 * a, 0.8 * a, 0.9 * a, a]
     })
 }

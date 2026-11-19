@@ -37,6 +37,9 @@ pub struct Billboard;
 pub struct Ray {
     tilt: f32,
     phase: f32,
+    width: f32,
+    x: f32,
+    z: f32,
 }
 
 #[derive(Resource)]
@@ -97,6 +100,7 @@ pub fn setup(
     commands.insert_resource(ClearColor(lk.clear));
 
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
+    let _ = crate::material::CAUSTIC_TEX.set(images.add(textures::caustic_tile()));
 
     // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
     // Gire a donde gire la cámara, siempre hay agua.
@@ -146,28 +150,33 @@ pub fn setup(
 
     // rayos de luz desde la superficie
     let ray_tex = images.add(textures::ray());
-    let ray = materials.add(CardMaterial::additive(ray_tex.clone(), 0.55));
+    let mut ray_mat = CardMaterial::additive(ray_tex.clone(), 0.16);
+    ray_mat.extra.z = -1.0;
+    let ray = materials.add(ray_mat);
     let mut seed = 17u32;
     let mut rnd = move || {
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
         (seed >> 8) as f32 / (1u32 << 24) as f32
     };
-    for _ in 0..(if flags.has("no_rays") { 0 } else { 9 }) {
-        let x = -9.0 + 18.0 * rnd();
-        let z = -12.0 + 8.0 * rnd();
-        let w = 1.2 + 2.2 * rnd();
-        let tilt = -0.25 + 0.35 * rnd();
+    // Rayos de luz: nacen en la superficie, siempre de cara a la cámara, y se
+    // funden por los lados y por abajo. Nunca se ven de canto ni cortados.
+    for _ in 0..(if flags.has("no_rays") { 0 } else { 12 }) {
+        let x = -12.0 + 24.0 * rnd();
+        let z = -14.0 + 14.0 * rnd();
+        let w = 1.0 + 2.5 * rnd();
+        // todos se inclinan hacia el mismo lado: un solo sol
+        let tilt = 0.14 + 0.10 * rnd();
+        let h = 14.0;
         commands.spawn((
             Mesh3d(quad.clone()),
             MeshMaterial3d(ray.clone()),
-            // nacen en la superficie y se apagan hacia abajo: nunca se ven
-            // cortados por arriba
-            Transform::from_xyz(x, HEIGHT - 10.0, z)
-                .with_rotation(Quat::from_rotation_z(tilt))
-                .with_scale(Vec3::new(w, 20.0, 1.0)),
+            Transform::from_xyz(x, HEIGHT - h * 0.5, z).with_scale(Vec3::new(w, h, 1.0)),
             Ray {
                 tilt,
                 phase: rnd() * 6.28,
+                width: w,
+                x,
+                z,
             },
         ));
     }
@@ -246,13 +255,25 @@ pub fn refraction(
 }
 
 /// Los rayos oscilan despacio, como la luz que atraviesa un oleaje lento.
-pub fn sway_rays(time: Res<Time>, mut q: Query<(&mut Transform, &Ray)>) {
+pub fn sway_rays(
+    time: Res<Time>,
+    cam: Query<&Transform, (With<Camera3d>, Without<Ray>)>,
+    mut q: Query<(&mut Transform, &Ray)>,
+) {
+    let Ok(cam) = cam.single() else { return };
     let t = time.elapsed_secs();
     for (mut tf, r) in q.iter_mut() {
-        let a = r.tilt + 0.06 * (t * 0.17 + r.phase).sin();
-        tf.rotation = Quat::from_rotation_z(a);
-        tf.scale.x = tf.scale.x.signum() * tf.scale.x.abs().max(0.1);
-        tf.translation.x += 0.02 * (t * 0.11 + r.phase).cos() * time.delta_secs();
+        // de cara a la cámara (solo giro en Y), con su inclinación propia que
+        // respira con el oleaje
+        let to_cam = cam.translation - tf.translation;
+        let yaw = to_cam.x.atan2(to_cam.z);
+        let a = r.tilt + 0.05 * (t * 0.17 + r.phase).sin();
+        tf.rotation = Quat::from_euler(EulerRot::YXZ, yaw, 0.0, a);
+        // el ancho parpadea despacio: la luz que concentra el oleaje
+        let flicker = 0.75 + 0.35 * (0.5 + 0.5 * (t * 0.43 + r.phase).sin()) * (0.5 + 0.5 * (t * 0.29 + r.phase * 1.7).cos());
+        tf.scale.x = r.width * flicker;
+        tf.translation.x = r.x + 0.25 * (t * 0.11 + r.phase).sin();
+        tf.translation.z = r.z;
     }
 }
 

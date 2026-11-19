@@ -33,8 +33,15 @@ pub struct CardMaterial {
     #[texture(1)]
     #[sampler(2)]
     pub texture: Handle<Image>,
+    /// Textura de cáusticas (compartida por todos los materiales).
+    #[texture(3)]
+    #[sampler(4)]
+    pub caustic: Handle<Image>,
     pub alpha: AlphaMode,
 }
+
+/// La textura de cáusticas, creada una vez en `world::setup`.
+pub static CAUSTIC_TEX: std::sync::OnceLock<Handle<Image>> = std::sync::OnceLock::new();
 
 impl CardMaterial {
     fn new(texture: Handle<Image>, color: Color, alpha: AlphaMode, fog: bool) -> Self {
@@ -59,19 +66,20 @@ impl CardMaterial {
             params: Vec4::new(FOG_DENSITY, if fog { 1.0 } else { 0.0 }, premul, caustics),
             extra: Vec4::new(1.0, 0.9, 0.0, 0.0),
             texture,
+            caustic: CAUSTIC_TEX.get().cloned().unwrap_or_default(),
             alpha,
         }
     }
 
     /// Sprite recortado: mezcla por alfa, con niebla y cáusticas suaves.
     pub fn sprite(texture: Handle<Image>) -> Self {
-        Self::with_caustics(texture, Color::WHITE, AlphaMode::Blend, true, 0.35)
+        Self::with_caustics(texture, Color::WHITE, AlphaMode::Blend, true, 0.2)
     }
 
     /// Opaco con niebla y cáusticas marcadas (suelo); se sombrea por la
     /// pendiente (extra.w) para que el relieve se lea.
     pub fn opaque(texture: Handle<Image>) -> Self {
-        let mut m = Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.9);
+        let mut m = Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.5);
         m.extra.w = 1.0;
         m
     }

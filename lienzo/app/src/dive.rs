@@ -98,9 +98,9 @@ pub fn swim(
     let mut ahead = to_world(route::sample(&dive.route, dive.u + 0.04));
     // nunca dentro del relieve: al menos 1.7 por encima del suelo
     let floor = crate::terrain::floor_y(&obra.scene, target.x, target.z);
-    target.y = target.y.max(floor + 1.7);
+    target.y = target.y.max(floor + 2.3);
     // la mirada va por delante, casi a nivel, apenas hacia la obra
-    ahead.y = target.y - 0.45;
+    ahead.y = target.y - 0.3;
     // suavidad: la cámara persigue la ruta, la mirada va un poco por delante
     let k = 1.0 - (-2.5 * dt).exp();
     let (p0, l0) = (dive.pos, dive.look);

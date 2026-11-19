@@ -70,6 +70,7 @@ pub fn control(
     time: Res<Time>,
     st: Res<DrawState>,
     dive: Res<crate::dive::Dive>,
+    obra: Res<crate::Obra>,
     windows: Query<&Window, With<PrimaryWindow>>,
     mut q: Query<(&mut Orbit, &mut Transform)>,
 ) {
@@ -128,12 +129,18 @@ pub fn control(
         dist_now = dist_goal;
     }
     let dist = dist_now + (dist_goal - dist_now) * k;
-    let pos = o.target
+    let mut pos = o.target
         + Vec3::new(
             o.yaw.sin() * o.pitch.cos(),
             o.pitch.sin(),
             o.yaw.cos() * o.pitch.cos(),
         ) * dist;
+    // Nunca bajo la arena ni fuera del agua: en buceo la cámara se queda
+    // entre el fondo y la superficie aunque la órbita pida más.
+    if !top {
+        let floor = crate::terrain::floor_y(&obra.scene, pos.x, pos.z);
+        pos.y = pos.y.clamp(floor + 0.8, crate::world::HEIGHT - 0.4);
+    }
     if pos.is_finite() && (pos - o.target).length() > 0.01 {
         *tf = Transform::from_translation(pos).looking_at(o.target, Vec3::Y);
     }
