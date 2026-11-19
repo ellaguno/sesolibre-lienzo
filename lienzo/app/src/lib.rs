@@ -215,11 +215,29 @@ pub fn run() -> anyhow::Result<()> {
                 world::billboards,
                 draw::title,
                 sync_audio,
+                shot,
             )
                 .chain(),
         )
         .run();
     Ok(())
+}
+
+/// Con `LIENZO_SHOT=ruta.png`, guarda la ventana al fotograma 120 y cierra.
+/// Es la forma de "ver" la app sin pantalla (sesiones sin captura, CI).
+fn shot(mut commands: Commands, mut n: Local<u32>, mut exit: MessageWriter<AppExit>) {
+    let Ok(path) = std::env::var("LIENZO_SHOT") else {
+        return;
+    };
+    *n += 1;
+    if *n == 120 {
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(path));
+    }
+    if *n == 200 {
+        exit.write(AppExit::Success);
+    }
 }
 
 fn sync_audio(mut obra: ResMut<Obra>, link: Res<audio::AudioLink>) {

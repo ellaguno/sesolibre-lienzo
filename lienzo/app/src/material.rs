@@ -22,9 +22,13 @@ pub struct CardMaterial {
     #[uniform(0)]
     pub fog_color: LinearRgba,
     /// x: densidad de niebla · y: niebla activa · z: premultiplicar alfa (modo
-    /// aditivo) · w: sin uso.
+    /// aditivo) · w: fuerza de cáusticas propia del material (0 = ninguna).
     #[uniform(0)]
     pub params: Vec4,
+    /// x: multiplicador de cáusticas del agua · y: escala espacial de las
+    /// cáusticas · z, w: sin uso.
+    #[uniform(0)]
+    pub extra: Vec4,
     #[texture(1)]
     #[sampler(2)]
     pub texture: Handle<Image>,
@@ -33,6 +37,16 @@ pub struct CardMaterial {
 
 impl CardMaterial {
     fn new(texture: Handle<Image>, color: Color, alpha: AlphaMode, fog: bool) -> Self {
+        Self::with_caustics(texture, color, alpha, fog, 0.0)
+    }
+
+    fn with_caustics(
+        texture: Handle<Image>,
+        color: Color,
+        alpha: AlphaMode,
+        fog: bool,
+        caustics: f32,
+    ) -> Self {
         let premul = if matches!(alpha, AlphaMode::Add) {
             1.0
         } else {
@@ -41,20 +55,21 @@ impl CardMaterial {
         CardMaterial {
             color: color.into(),
             fog_color: FOG_COLOR.into(),
-            params: Vec4::new(FOG_DENSITY, if fog { 1.0 } else { 0.0 }, premul, 0.0),
+            params: Vec4::new(FOG_DENSITY, if fog { 1.0 } else { 0.0 }, premul, caustics),
+            extra: Vec4::new(1.0, 0.9, 0.0, 0.0),
             texture,
             alpha,
         }
     }
 
-    /// Sprite recortado: mezcla por alfa, con niebla.
+    /// Sprite recortado: mezcla por alfa, con niebla y cáusticas suaves.
     pub fn sprite(texture: Handle<Image>) -> Self {
-        Self::new(texture, Color::WHITE, AlphaMode::Blend, true)
+        Self::with_caustics(texture, Color::WHITE, AlphaMode::Blend, true, 0.35)
     }
 
-    /// Opaco con niebla (suelo).
+    /// Opaco con niebla y cáusticas marcadas (suelo).
     pub fn opaque(texture: Handle<Image>) -> Self {
-        Self::new(texture, Color::WHITE, AlphaMode::Opaque, true)
+        Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.9)
     }
 
     /// Opaco sin niebla (fondo).

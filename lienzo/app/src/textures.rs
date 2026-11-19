@@ -49,8 +49,14 @@ pub fn ray() -> Image {
 
 /// Fondo: degradado vertical de la superficie al abismo.
 pub fn backdrop(top: [f32; 3], bottom: [f32; 3]) -> Image {
+    // v = 0 es el polo superior de la esfera (superficie), v = 0.5 el horizonte.
+    // El horizonte queda a medio camino para que el suelo, con niebla del mismo
+    // color, se funda sin costura.
+    // En la esfera de Bevy v crece hacia ARRIBA, así que se invierte.
     make(16, 256, move |_, v| {
-        let t = (v * 1.6).clamp(0.0, 1.0).powf(1.2);
+        let v = 1.0 - v;
+        let t = ((v - 0.12) / 0.70).clamp(0.0, 1.0);
+        let t = t * t * (3.0 - 2.0 * t);
         [
             top[0] * (1.0 - t) + bottom[0] * t,
             top[1] * (1.0 - t) + bottom[1] * t,

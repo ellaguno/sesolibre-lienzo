@@ -22,9 +22,28 @@ pub struct Look {
     pub rays: f32,
     pub particles: f32,
     pub clear: Color,
+    /// Multiplicador de cáusticas (0 = ninguna, 1 = Caribe a mediodía).
+    pub caustics: f32,
+}
+
+/// Color del horizonte de un agua: donde el suelo se funde con el fondo. Es
+/// el color de la niebla.
+pub fn horizon(top: [f32; 3], bottom: [f32; 3]) -> Color {
+    let t: f32 = 0.52;
+    Color::srgb(
+        top[0] * (1.0 - t) + bottom[0] * t,
+        top[1] * (1.0 - t) + bottom[1] * t,
+        top[2] * (1.0 - t) + bottom[2] * t,
+    )
 }
 
 pub fn look(w: Water) -> Look {
+    let mut lk = raw_look(w);
+    lk.fog = horizon(lk.top, lk.bottom);
+    lk
+}
+
+fn raw_look(w: Water) -> Look {
     match w {
         Water::Abismo => Look {
             top: [0.11, 0.36, 0.50],
@@ -35,6 +54,7 @@ pub fn look(w: Water) -> Look {
             rays: 0.55,
             particles: 0.35,
             clear: Color::srgb(0.012, 0.04, 0.11),
+            caustics: 0.35,
         },
         Water::Caribe => Look {
             top: [0.55, 0.90, 0.92],
@@ -45,6 +65,7 @@ pub fn look(w: Water) -> Look {
             rays: 0.95,
             particles: 0.25,
             clear: Color::srgb(0.06, 0.42, 0.55),
+            caustics: 1.0,
         },
         Water::Hawai => Look {
             top: [0.20, 0.52, 0.85],
@@ -55,6 +76,7 @@ pub fn look(w: Water) -> Look {
             rays: 0.80,
             particles: 0.30,
             clear: Color::srgb(0.02, 0.10, 0.30),
+            caustics: 0.75,
         },
         Water::Cristalina => Look {
             top: [0.72, 0.94, 0.90],
@@ -65,6 +87,7 @@ pub fn look(w: Water) -> Look {
             rays: 0.70,
             particles: 0.18,
             clear: Color::srgb(0.25, 0.60, 0.62),
+            caustics: 0.9,
         },
     }
 }
@@ -94,6 +117,7 @@ pub fn apply(
     for (_, m) in materials.iter_mut() {
         m.fog_color = fog;
         m.params.x = lk.fog_density;
+        m.extra.x = lk.caustics;
     }
     if let Some(mut m) = materials.get_mut(&common.backdrop) {
         m.texture = images.add(textures::backdrop(lk.top, lk.bottom));
