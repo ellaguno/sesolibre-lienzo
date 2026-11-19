@@ -6,7 +6,7 @@ use crate::Obra;
 use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
 use bevy::text::FontSize;
-use lienzo_core::Brush;
+use lienzo_core::{Brush, Water};
 
 /// Alto de la franja de la paleta. En pantalla táctil es más alta: botones de
 /// dedo y dos filas.
@@ -35,6 +35,7 @@ pub struct PaletteRoot;
 #[derive(Component)]
 pub enum Action {
     Pick(Brush),
+    Water(Water),
     Contemplate,
     Undo,
     Gallery,
@@ -43,10 +44,16 @@ pub enum Action {
 #[derive(Component)]
 pub struct Hint;
 
-const BG: Color = Color::srgba(0.02, 0.08, 0.16, 0.72);
-const BTN: Color = Color::srgba(0.10, 0.26, 0.38, 0.9);
-const BTN_ON: Color = Color::srgba(0.85, 0.55, 0.30, 0.95);
-const TXT: Color = Color::srgb(0.88, 0.94, 0.96);
+// Botones transparentes y sutiles: un velo claro, borde fino, texto luminoso.
+const BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.0);
+const BTN: Color = Color::srgba(1.0, 1.0, 1.0, 0.07);
+const BTN_ON: Color = Color::srgba(1.0, 1.0, 1.0, 0.24);
+const BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.22);
+const BORDER_ON: Color = Color::srgba(1.0, 1.0, 1.0, 0.65);
+const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
+
+#[derive(Component)]
+pub struct WaterRow;
 
 /// La fuente de toda la interfaz (Noto Sans, OFL).
 #[derive(Resource)]
@@ -77,17 +84,32 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
         ))
         .with_children(|row| {
             for (i, b) in Brush::ALL.iter().enumerate() {
-                button(
-                    row,
-                    &font.0,
-                    Action::Pick(*b),
-                    &format!("{} {}", i + 1, brush_name(*b)),
-                );
+                button(row, &font.0, Action::Pick(*b), brush_name(*b));
             }
             spacer(row);
             button(row, &font.0, Action::Undo, "deshacer");
             button(row, &font.0, Action::Gallery, "galería");
             button(row, &font.0, Action::Contemplate, "contemplar");
+        });
+    commands
+        .spawn((
+            WaterRow,
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(14.0),
+                top: Val::Px(if cfg!(target_os = "android") {
+                    56.0
+                } else {
+                    12.0
+                }),
+                column_gap: Val::Px(6.0),
+                ..default()
+            },
+        ))
+        .with_children(|row| {
+            for w in Water::ALL {
+                button(row, &font.0, Action::Water(w), w.name());
+            }
         });
     commands.spawn((
         Hint,
@@ -123,11 +145,13 @@ fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: Action, l
     row.spawn((
         action,
         Node {
-            padding: UiRect::axes(Val::Px(font_px() * 0.9), Val::Px(font_px() * 0.65)),
-            border_radius: BorderRadius::all(Val::Px(8.0)),
+            padding: UiRect::axes(Val::Px(font_px() * 0.9), Val::Px(font_px() * 0.55)),
+            border: UiRect::all(Val::Px(1.0)),
+            border_radius: BorderRadius::all(Val::Px(999.0)),
             ..default()
         },
         BackgroundColor(BTN),
+        BorderColor::all(BORDER),
     ))
     .with_children(|b| {
         b.spawn((
@@ -147,6 +171,7 @@ pub fn on_click(
     click: On<PointerClick>,
     q: Query<&Action>,
     mut st: ResMut<DrawState>,
+    mut obra: ResMut<Obra>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
 ) {
     let Ok(action) = q.get(click.event().entity) else {
@@ -156,6 +181,13 @@ pub fn on_click(
         Action::Pick(b) => {
             st.brush = *b;
             st.title_dirty = true;
+        }
+        Action::Water(w) => {
+            if obra.scene.water != *w {
+                obra.scene.water = *w;
+                obra.dirty = true;
+                st.title_dirty = true;
+            }
         }
         Action::Contemplate => {
             st.contemplate = !st.contemplate;
@@ -172,19 +204,21 @@ pub fn refresh(
     st: Res<DrawState>,
     obra: Res<Obra>,
     gallery: Res<crate::gallery::Gallery>,
-    mut buttons: Query<(&Action, &mut BackgroundColor)>,
-    mut root: Query<&mut Node, With<PaletteRoot>>,
+    mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor)>,
+    mut root: Query<&mut Node, Or<(With<PaletteRoot>, With<WaterRow>)>>,
     mut hint: Query<&mut Text, With<Hint>>,
 ) {
-    for (action, mut bg) in buttons.iter_mut() {
+    for (action, mut bg, mut border) in buttons.iter_mut() {
         let on = match action {
             Action::Pick(b) => *b == st.brush,
+            Action::Water(w) => *w == obra.scene.water,
             Action::Contemplate => st.contemplate,
             Action::Undo | Action::Gallery => false,
         };
         bg.0 = if on { BTN_ON } else { BTN };
+        *border = BorderColor::all(if on { BORDER_ON } else { BORDER });
     }
-    if let Ok(mut node) = root.single_mut() {
+    for mut node in root.iter_mut() {
         node.display = if st.contemplate {
             Display::None
         } else {

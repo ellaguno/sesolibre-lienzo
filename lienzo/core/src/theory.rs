@@ -1,16 +1,90 @@
 //! Lo tonal. Una escala por mundo y un ciclo lento de acordes; todo lo que
 //! suena con altura pasa por aquí, y por eso nada puede sonar mal.
 
+use crate::scene::Water;
+
 /// Re pentatónica mayor: D E F# A B. Grados 0..5 por octava.
 pub const PENTA: [i32; 5] = [0, 2, 4, 7, 9];
 /// Grado 0 = D3.
 pub const ROOT_MIDI: i32 = 50;
 pub const DEGREES_PER_OCTAVE: i32 = 5;
 
+/// Lo que el agua decide de la música. Siempre cinco grados por octava, así
+/// que motivos, variaciones y acordes (clases de grado) valen para todas.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tonality {
+    pub name: &'static str,
+    pub root_midi: i32,
+    pub intervals: [i32; 5],
+    pub bpm: f64,
+    /// Reverb del máster (0..1).
+    pub wet: f32,
+    /// Multiplica la probabilidad de disparo de los motivos.
+    pub feel: f64,
+    /// Nivel del colchón de cuerdas.
+    pub pad_level: f32,
+}
+
+impl Tonality {
+    pub fn degree_to_midi(&self, deg: i32) -> i32 {
+        let oct = deg.div_euclid(DEGREES_PER_OCTAVE);
+        let cls = deg.rem_euclid(DEGREES_PER_OCTAVE) as usize;
+        self.root_midi + 12 * oct + self.intervals[cls]
+    }
+
+    pub fn beat_seconds(&self) -> f64 {
+        60.0 / self.bpm
+    }
+}
+
+pub fn tonality(water: Water) -> Tonality {
+    match water {
+        // índigo, lento, reverb larga: lo que había
+        Water::Abismo => Tonality {
+            name: "Re pentatónica",
+            root_midi: 50,
+            intervals: PENTA,
+            bpm: 56.0,
+            wet: 0.45,
+            feel: 1.0,
+            pad_level: 1.0,
+        },
+        // turquesa y arena blanca: mayor luminoso, más vivo, menos cola
+        Water::Caribe => Tonality {
+            name: "Sol pentatónica mayor",
+            root_midi: 55,
+            intervals: PENTA,
+            bpm: 72.0,
+            wet: 0.28,
+            feel: 1.15,
+            pad_level: 0.7,
+        },
+        // cobalto y roca volcánica: color lidio (cuarta aumentada)
+        Water::Hawai => Tonality {
+            name: "Mi lidia pentatónica",
+            root_midi: 52,
+            intervals: [0, 2, 4, 6, 7],
+            bpm: 64.0,
+            wet: 0.38,
+            feel: 1.0,
+            pad_level: 0.85,
+        },
+        // cenote: casi transparente, pocas voces, mucho aire, registro alto
+        Water::Cristalina => Tonality {
+            name: "La pentatónica mayor",
+            root_midi: 57,
+            intervals: PENTA,
+            bpm: 60.0,
+            wet: 0.55,
+            feel: 0.75,
+            pad_level: 0.5,
+        },
+    }
+}
+
+/// Grado → nota MIDI en el Abismo (la tonalidad de referencia).
 pub fn degree_to_midi(deg: i32) -> i32 {
-    let oct = deg.div_euclid(DEGREES_PER_OCTAVE);
-    let cls = deg.rem_euclid(DEGREES_PER_OCTAVE) as usize;
-    ROOT_MIDI + 12 * oct + PENTA[cls]
+    tonality(Water::Abismo).degree_to_midi(deg)
 }
 
 pub fn degree_class(deg: i32) -> i32 {

@@ -460,11 +460,13 @@ Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente
 6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
 7. Más elementos (sprites nuevos con Gemini, mismo estilo).
 
-### 11.9 Decisiones que faltan
+### 11.9 Decisiones tomadas (19 nov 2026)
 
-- ¿La vista de dibujo es **cenital pura** (como un mapa) o **isométrica** (se ve algo de
-  altura)? Propongo cenital con ligera inclinación (~25°) para que los elementos se lean.
-- ¿La capa de altura al dibujar es un **deslizador** o **tres botones** (fondo, agua,
-  superficie)? Propongo tres botones; es más claro con el dedo.
-- ¿El agua se elige **al crear** la obra o se puede **cambiar siempre**? Propongo siempre.
-- ¿La ruta de buceo se reproduce **una vez** o **en bucle** durante la contemplación?
+- Vista de dibujo **cenital con ~25° de inclinación**, para que los elementos se lean.
+- Capa de altura con **tres botones** (fondo · agua · superficie).
+- El agua **se puede cambiar siempre**.
+- La ruta de buceo se reproduce **en bucle** en contemplación; si la obra no tiene ruta,
+  la app **genera una automática** que recorre lo dibujado.
+- Interfaz: **botones transparentes y sutiles**, tipografía cuidada (Noto Sans), nada de
+  paletas numeradas.
+- Orientación: **horizontal como ideal** (tablets); vertical funciona pero no manda.

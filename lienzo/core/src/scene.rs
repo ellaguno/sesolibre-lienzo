@@ -136,10 +136,43 @@ pub enum World {
     Abismo,
 }
 
+/// El agua: color, luz y tonalidad de la obra. Se puede cambiar siempre; la
+/// misma obra "amanece" en otro mar. Añadir una es dato en `theory::tonality` y
+/// en la app, no código nuevo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Water {
+    #[default]
+    Abismo,
+    Caribe,
+    Hawai,
+    Cristalina,
+}
+
+impl Water {
+    pub const ALL: [Water; 4] = [
+        Water::Abismo,
+        Water::Caribe,
+        Water::Hawai,
+        Water::Cristalina,
+    ];
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Water::Abismo => "Abismo",
+            Water::Caribe => "Caribe",
+            Water::Hawai => "Hawái",
+            Water::Cristalina => "Cristalina",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Scene {
     pub version: u32,
     pub world: World,
+    #[serde(default)]
+    pub water: Water,
     pub seed: u64,
     #[serde(default)]
     pub title: String,
@@ -151,6 +184,7 @@ impl Scene {
         Scene {
             version: 1,
             world: World::Abismo,
+            water: Water::Abismo,
             seed,
             title: String::new(),
             strokes: vec![],

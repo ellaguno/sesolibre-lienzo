@@ -48,11 +48,9 @@ pub fn ray() -> Image {
 }
 
 /// Fondo: degradado vertical de la superficie al abismo.
-pub fn backdrop() -> Image {
-    make(16, 256, |_, v| {
+pub fn backdrop(top: [f32; 3], bottom: [f32; 3]) -> Image {
+    make(16, 256, move |_, v| {
         let t = (v * 1.6).clamp(0.0, 1.0).powf(1.2);
-        let top = [0.11, 0.36, 0.50];
-        let bottom = [0.012, 0.04, 0.11];
         [
             top[0] * (1.0 - t) + bottom[0] * t,
             top[1] * (1.0 - t) + bottom[1] * t,
@@ -63,7 +61,7 @@ pub fn backdrop() -> Image {
 }
 
 /// Suelo de arena con cáusticas horneadas.
-pub fn sand() -> Image {
+pub fn sand(color: [f32; 3]) -> Image {
     let hash = |x: i32, y: i32| -> f32 {
         let mut h = (x.wrapping_mul(374761393) ^ y.wrapping_mul(668265263)) as u32;
         h = (h ^ (h >> 13)).wrapping_mul(1274126177);
@@ -85,6 +83,6 @@ pub fn sand() -> Image {
             ((u * 37.0 + v * 23.0).sin() * (u * 53.0 - v * 31.0).sin() * (u * 19.0 + 2.0).sin())
                 .powi(2);
         let k = 0.75 + 0.35 * n + 0.45 * c;
-        [0.22 * k, 0.35 * k, 0.45 * k, 1.0]
+        [color[0] * k, color[1] * k, color[2] * k, 1.0]
     })
 }

@@ -161,9 +161,9 @@ fn replace_scene(
     obra.new_stroke = None;
 }
 
-const BG: Color = Color::srgba(0.02, 0.07, 0.14, 0.92);
-const BTN: Color = Color::srgba(0.10, 0.26, 0.38, 0.9);
-const TXT: Color = Color::srgb(0.88, 0.94, 0.96);
+const BG: Color = Color::srgba(0.0, 0.04, 0.09, 0.80);
+const BTN: Color = Color::srgba(1.0, 1.0, 1.0, 0.07);
+const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
 
 pub fn setup(mut commands: Commands, font: Res<crate::ui::UiFont>) {
     commands
@@ -223,10 +223,12 @@ fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: GalleryAc
         action,
         Node {
             padding: UiRect::axes(Val::Px(12.0), Val::Px(8.0)),
-            border_radius: BorderRadius::all(Val::Px(8.0)),
+            border: UiRect::all(Val::Px(1.0)),
+            border_radius: BorderRadius::all(Val::Px(999.0)),
             ..default()
         },
         BackgroundColor(BTN),
+        BorderColor::all(Color::srgba(1.0, 1.0, 1.0, 0.22)),
     ))
     .with_children(|b| {
         b.spawn((

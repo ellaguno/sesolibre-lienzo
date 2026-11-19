@@ -18,4 +18,5 @@ pub mod variation;
 pub use director::{compose, Event};
 pub use engine::{render_offline, Engine, EngineOptions};
 pub use render::{write_wav, AssetSource, FsSource, SampleBank, SR};
-pub use scene::{Brush, Point, Scene, Stroke};
+pub use scene::{Brush, Point, Scene, Stroke, Water};
+pub use theory::{tonality, Tonality};

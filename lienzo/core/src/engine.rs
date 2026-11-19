@@ -11,7 +11,7 @@ use crate::render::{
 };
 use crate::rng::Rng;
 use crate::scene::Scene;
-use crate::theory::degree_to_midi;
+use crate::theory::tonality;
 use std::sync::Arc;
 
 /// Una nota (o sonido) en curso: su buffer ya remuestreado, envuelto y filtrado.
@@ -205,6 +205,7 @@ impl Engine {
     /// recompone desde ahora. Determinista: misma escena + mismo instante de
     /// cambio = mismo resultado.
     pub fn set_scene(&mut self, scene: Scene) {
+        self.opts.wet = tonality(scene.water).wet;
         self.scene = scene;
         self.rng = Rng::from_parts(&[self.seed, 0x7265_6e64, self.clock as u64]);
         self.horizon = 0.0;
@@ -403,7 +404,8 @@ impl Engine {
         };
         let sp = spec(stroke.brush);
         let now = self.now_seconds() + 0.05;
-        let beat = crate::director::beat_seconds();
+        let ton = tonality(self.scene.water);
+        let beat = ton.beat_seconds();
         let c = stroke.centroid();
         if let (Some(inst), Some(m)) = (
             sp.instrument,
@@ -413,7 +415,7 @@ impl Engine {
                 let ev = Event::Note {
                     t: now + n.at * beat,
                     instrument: inst,
-                    midi: degree_to_midi(n.degree),
+                    midi: ton.degree_to_midi(n.degree),
                     vel: n.vel,
                     dur: n.beats * beat,
                     pan: c.x.clamp(-1.0, 1.0) * 0.8,

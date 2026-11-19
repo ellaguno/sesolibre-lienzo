@@ -37,6 +37,9 @@ pub struct Billboard;
 pub struct Common {
     pub quad: Handle<Mesh>,
     pub dot: Handle<CardMaterial>,
+    pub backdrop: Handle<CardMaterial>,
+    pub sand: Handle<CardMaterial>,
+    pub ray: Handle<CardMaterial>,
 }
 
 pub fn setup(
@@ -55,24 +58,27 @@ pub fn setup(
         },
         Orbit::default(),
     ));
-    commands.insert_resource(ClearColor(Color::srgb(0.012, 0.04, 0.11)));
+    let lk = crate::water::look(lienzo_core::Water::Abismo);
+    commands.insert_resource(ClearColor(lk.clear));
 
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
 
     // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
     // Gire a donde gire la cámara, siempre hay agua.
-    let backdrop = materials.add(CardMaterial::backdrop(images.add(textures::backdrop())));
+    let backdrop = materials.add(CardMaterial::backdrop(
+        images.add(textures::backdrop(lk.top, lk.bottom)),
+    ));
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
-        MeshMaterial3d(backdrop),
+        MeshMaterial3d(backdrop.clone()),
         Transform::from_xyz(0.0, -20.0, 0.0),
     ));
 
     // suelo
-    let sand = materials.add(CardMaterial::opaque(images.add(textures::sand())));
+    let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(140.0, 140.0))),
-        MeshMaterial3d(sand),
+        MeshMaterial3d(sand.clone()),
         Transform::from_xyz(0.0, 0.0, -6.0),
     ));
 
@@ -120,7 +126,13 @@ pub fn setup(
             Billboard,
         ));
     }
-    commands.insert_resource(Common { quad, dot });
+    commands.insert_resource(Common {
+        quad,
+        dot,
+        backdrop,
+        sand,
+        ray,
+    });
 }
 
 pub fn drift_particles(time: Res<Time>, mut q: Query<(&mut Transform, &Particle)>) {
