@@ -73,6 +73,15 @@ pub fn from_stroke(stroke: &Stroke, seed: u64, index: usize) -> Option<Motif> {
         if stroke.points.len() < 2 && i > 0 {
             deg += [-1, 1, 2][rng.below(3)];
         }
+        // Un acorde no repite la misma nota: se abre en terceras desde la
+        // base (tríada, y la octava si hay más).
+        if sp.articulation == Articulation::Chord {
+            deg = base_from_h(heights[0]) + [0, 2, 4, 5, 7, 9][i.min(5)];
+        }
+        // El haz de luz es un arpegio que sube por el rayo, no sigue el contorno.
+        if stroke.brush == crate::scene::Brush::Haz {
+            deg = sp.lo_degree + ((i as i32) % (sp.span_degrees + 1));
+        }
         let beats = match sp.articulation {
             Articulation::Sustain => sp.note_beats * rng.range(0.9, 1.3),
             Articulation::Pluck => sp.note_beats,

@@ -45,6 +45,10 @@ pub struct Common {
     pub dot: Handle<CardMaterial>,
     /// Textura de acuarela para los trazos de color.
     pub blob: Handle<Image>,
+    /// Texturas de la familia Luz.
+    pub glow_tex: Handle<Image>,
+    pub ray_tex: Handle<Image>,
+    pub rainbow_tex: Handle<Image>,
     pub backdrop: Handle<CardMaterial>,
     pub sand: Handle<CardMaterial>,
     pub ray: Handle<CardMaterial>,
@@ -94,7 +98,8 @@ pub fn setup(
     ));
 
     // rayos de luz desde la superficie
-    let ray = materials.add(CardMaterial::additive(images.add(textures::ray()), 0.55));
+    let ray_tex = images.add(textures::ray());
+    let ray = materials.add(CardMaterial::additive(ray_tex.clone(), 0.55));
     let mut seed = 17u32;
     let mut rnd = move || {
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
@@ -145,6 +150,9 @@ pub fn setup(
         quad,
         dot,
         blob: images.add(textures::blob()),
+        glow_tex: images.add(textures::soft_dot()),
+        ray_tex,
+        rainbow_tex: images.add(textures::rainbow()),
         backdrop,
         sand,
         ray,

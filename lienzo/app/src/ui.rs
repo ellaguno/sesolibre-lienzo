@@ -306,7 +306,7 @@ pub fn refresh(
             Action::Water(w) => *w == obra.scene.water,
             Action::View(v) => *v == st.view,
             Action::Layer(l) => *l == st.layer,
-            Action::Swatch(i) => *i == st.swatch && st.brush == Brush::Color,
+            Action::Swatch(i) => *i == st.swatch && st.brush.uses_color(),
             Action::Contemplate => st.contemplate,
             Action::Undo | Action::Gallery => false,
         };
@@ -323,7 +323,7 @@ pub fn refresh(
         };
     }
     for mut node in swatches.iter_mut() {
-        node.display = if st.contemplate || st.brush != Brush::Color {
+        node.display = if st.contemplate || !st.brush.uses_color() {
             Display::None
         } else {
             Display::Flex

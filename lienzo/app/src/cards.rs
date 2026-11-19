@@ -11,6 +11,7 @@ use std::collections::HashMap;
 pub struct SpriteMaterials {
     cache: HashMap<&'static str, Handle<CardMaterial>>,
     colors: HashMap<[u8; 3], Handle<CardMaterial>>,
+    glows: HashMap<[u8; 3], Handle<CardMaterial>>,
 }
 
 impl SpriteMaterials {
@@ -52,6 +53,25 @@ impl SpriteMaterials {
                     Color::srgb(rgb[0], rgb[1], rgb[2]),
                 ))
             })
+            .clone()
+    }
+}
+
+impl SpriteMaterials {
+    fn glow(
+        &mut self,
+        rgb: [f32; 3],
+        tex: &Handle<Image>,
+        materials: &mut Assets<CardMaterial>,
+    ) -> Handle<CardMaterial> {
+        let key = [
+            (rgb[0] * 255.0) as u8,
+            (rgb[1] * 255.0) as u8,
+            (rgb[2] * 255.0) as u8,
+        ];
+        self.glows
+            .entry(key)
+            .or_insert_with(|| materials.add(CardMaterial::glow(tex.clone(), rgb, 0.85)))
             .clone()
     }
 }
@@ -98,6 +118,8 @@ pub enum Motion {
     Swim,
     Bob,
     Rise,
+    /// Latido lento de luz (farol).
+    Glow,
     Still,
 }
 
@@ -349,6 +371,86 @@ pub fn spawn_stroke(
                 ));
             }
         }
+        Brush::Farol => {
+            // núcleo brillante + halo amplio, con latido
+            let rgb = stroke.color.unwrap_or([0.6, 0.9, 1.0]);
+            let p = to_world(stroke.points[0]);
+            let core = mats.glow(rgb, &common.glow_tex, materials);
+            let halo_rgb = [rgb[0] * 0.5, rgb[1] * 0.5, rgb[2] * 0.5];
+            let halo = mats.glow(halo_rgb, &common.glow_tex, materials);
+            for (mat, r, ph) in [(core, 0.55, 0.0), (halo, 2.2, 1.7)] {
+                commands.spawn((
+                    Mesh3d(common.quad.clone()),
+                    MeshMaterial3d(mat),
+                    Transform::from_translation(p).with_scale(Vec3::new(r, r, 1.0)),
+                    Card {
+                        stroke: index,
+                        kind: Motion::Glow,
+                        phase: h(0) * 6.28 + ph,
+                        base: p,
+                        flip: false,
+                        pulse: 0.0,
+                        size: Vec2::splat(r),
+                    },
+                    Owned(index),
+                    Billboard,
+                ));
+            }
+        }
+        Brush::Haz => {
+            // rayos verticales a lo largo del gesto, de la superficie hacia abajo
+            let mat = mats.glow([1.0, 0.95, 0.8], &common.ray_tex, materials);
+            for (k, (p, _)) in along(stroke, 0.7).into_iter().enumerate() {
+                let w = 0.5 + 0.7 * h(k);
+                let height = 9.0 + 3.0 * h(k + 7);
+                let base = Vec3::new(p.x, 5.0, p.z);
+                commands.spawn((
+                    Mesh3d(common.quad.clone()),
+                    MeshMaterial3d(mat.clone()),
+                    Transform::from_translation(base - Vec3::Y * height * 0.5)
+                        .with_rotation(Quat::from_rotation_z(-0.12 + 0.24 * h(k + 3)))
+                        .with_scale(Vec3::new(w, height, 1.0)),
+                    Card {
+                        stroke: index,
+                        kind: Motion::Sway,
+                        phase: h(k + 9) * 6.28,
+                        base: base - Vec3::Y * height * 0.5,
+                        flip: false,
+                        pulse: 0.0,
+                        size: Vec2::new(w, height),
+                    },
+                    Owned(index),
+                    Billboard,
+                ));
+            }
+        }
+        Brush::Arcoiris => {
+            // un arco tenue que abarca el gesto
+            let pts: Vec<Vec3> = stroke.points.iter().map(|q| to_world(*q)).collect();
+            let a = pts[0];
+            let b = *pts.last().unwrap();
+            let span = (a.distance(b)).max(2.0);
+            let center = (a + b) * 0.5;
+            let mat = mats.glow([1.0, 1.0, 1.0], &common.rainbow_tex, materials);
+            let size = Vec2::new(span * 1.2, span * 0.6);
+            commands.spawn((
+                Mesh3d(common.quad.clone()),
+                MeshMaterial3d(mat),
+                Transform::from_translation(center + Vec3::Y * size.y * 0.3)
+                    .with_scale(Vec3::new(size.x, size.y, 1.0)),
+                Card {
+                    stroke: index,
+                    kind: Motion::Still,
+                    phase: 0.0,
+                    base: center + Vec3::Y * size.y * 0.3,
+                    flip: false,
+                    pulse: 0.0,
+                    size,
+                },
+                Owned(index),
+                Billboard,
+            ));
+        }
         Brush::Barco => {
             let p = to_world(stroke.points[0]);
             spawn_card(
@@ -420,6 +522,10 @@ pub fn animate(time: Res<Time>, mut q: Query<(&mut Transform, &mut Card)>) {
                 let y = (c.base.y + (t * 0.35 + c.phase) * 0.6) % 5.5;
                 tf.translation.y = y;
                 tf.translation.x = c.base.x + (t * 0.8 + c.phase).sin() * 0.08;
+            }
+            Motion::Glow => {
+                let k = 1.0 + 0.12 * (t * 0.9 + c.phase).sin();
+                tf.scale = Vec3::new(c.size.x * k, c.size.y * k, 1.0);
             }
             Motion::Still => {}
         }

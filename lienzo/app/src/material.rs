@@ -95,6 +95,16 @@ impl CardMaterial {
             true,
         )
     }
+
+    /// Luz de color (farol, haz, arcoíris): aditiva y teñida.
+    pub fn glow(texture: Handle<Image>, rgb: [f32; 3], alpha: f32) -> Self {
+        Self::new(
+            texture,
+            Color::srgba(rgb[0], rgb[1], rgb[2], alpha),
+            AlphaMode::Add,
+            true,
+        )
+    }
 }
 
 impl Material for CardMaterial {

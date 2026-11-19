@@ -54,6 +54,44 @@ pub fn blob() -> Image {
     })
 }
 
+/// Arcoíris: medio anillo con las bandas del espectro, suave y tenue. El
+/// color lo da la textura; el material solo pone la intensidad.
+pub fn rainbow() -> Image {
+    make(256, 128, |u, v| {
+        let x = (u - 0.5) * 2.0;
+        let y = 1.0 - v; // 0 abajo, 1 arriba
+        let r = (x * x + y * y).sqrt();
+        // banda entre r=0.72 y r=1.0; fuera, nada
+        let t = (r - 0.72) / 0.28;
+        if !(0.0..=1.0).contains(&t) || y < 0.0 {
+            return [0.0, 0.0, 0.0, 0.0];
+        }
+        // del rojo (fuera) al violeta (dentro)
+        let h = (1.0 - t) * 300.0;
+        let (rr, gg, bb) = hsv(h, 0.55, 1.0);
+        let soft = (t * (1.0 - t) * 4.0).powf(0.6);
+        let ends = (y * 3.0).clamp(0.0, 1.0); // se desvanece en los pies
+        let a = soft * ends * 0.9;
+        [rr * a, gg * a, bb * a, a]
+    })
+}
+
+fn hsv(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
+    let c = v * s;
+    let hp = (h / 60.0) % 6.0;
+    let x = c * (1.0 - ((hp % 2.0) - 1.0).abs());
+    let (r, g, b) = match hp as i32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = v - c;
+    (r + m, g + m, b + m)
+}
+
 /// Rayo de luz: brillante arriba, se funde hacia abajo, bordes suaves.
 pub fn ray() -> Image {
     make(64, 512, |u, v| {

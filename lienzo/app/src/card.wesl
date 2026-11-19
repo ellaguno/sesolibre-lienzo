@@ -49,7 +49,9 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         c = vec4<f32>(mix(c.rgb, material.fog_color.rgb, f), c.a);
     }
     if material.params.z > 0.5 {
-        c = vec4<f32>(c.rgb * c.a, c.a);
+        // Aditivo de verdad: Bevy mezcla "Add" como premultiplicado
+        // (destino × (1 − α)); con α = 0 el destino se conserva y la luz se suma.
+        c = vec4<f32>(c.rgb * c.a, 0.0);
     }
     return c;
 }

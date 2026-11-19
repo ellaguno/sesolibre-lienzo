@@ -113,6 +113,9 @@ pub fn brush_name(b: Brush) -> &'static str {
         Brush::Ballena => "Ballena",
         Brush::Barco => "Barco",
         Brush::Color => "Color",
+        Brush::Farol => "Farol",
+        Brush::Haz => "Haz de luz",
+        Brush::Arcoiris => "Arcoíris",
     }
 }
 
@@ -324,7 +327,7 @@ pub fn draw(
             } else {
                 Stroke::line(brush, pts, ms)
             };
-            if brush == Brush::Color {
+            if brush.uses_color() {
                 stroke = stroke.with_color(SWATCHES[st.swatch]);
             }
             let index = obra.scene.strokes.len();

@@ -39,10 +39,16 @@ pub enum Brush {
     /// Trazo de acuarela: color libre que se queda en el agua. Familia Color
     /// (DISEÑO §11.3); musicalmente es colchón.
     Color,
+    /// Familia Luz: farol de bioluminiscencia (toque, con color).
+    Farol,
+    /// Familia Luz: haz de luz que entra por la superficie (trazo).
+    Haz,
+    /// Familia Luz: arcoíris sutil en el agua (trazo).
+    Arcoiris,
 }
 
 impl Brush {
-    pub const ALL: [Brush; 9] = [
+    pub const ALL: [Brush; 12] = [
         Brush::Kelp,
         Brush::Coral,
         Brush::Anemona,
@@ -52,7 +58,15 @@ impl Brush {
         Brush::Ballena,
         Brush::Barco,
         Brush::Color,
+        Brush::Farol,
+        Brush::Haz,
+        Brush::Arcoiris,
     ];
+
+    /// Pinceles que usan el color elegido en la paleta.
+    pub fn uses_color(&self) -> bool {
+        matches!(self, Brush::Color | Brush::Farol)
+    }
 }
 
 /// Un gesto del autor. Un toque suelto es un trazo de un solo punto.
