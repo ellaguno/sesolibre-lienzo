@@ -103,3 +103,14 @@ notes = "6 s. Fuera de tono para el abismo; en reserva (quizá como golpe grave 
 # freesound 588310 "Creaking Tension (Ship/Wood) OWI" — WolfOWI — CC-BY-NC-4.0.
 #   Excluido por la cláusula NonCommercial (política del proyecto, ver DISEÑO.md §7).
 #   Archivo borrado de audio/raw/freesound/.
+
+# ------------------------------------------------------------------- tipografía
+
+[[asset]]
+id = "noto-sans"
+kind = "font"
+path = "fonts/NotoSans-Variable.ttf"
+author = "The Noto Project Authors"
+source = "https://github.com/google/fonts/tree/main/ofl/notosans"
+license = "OFL-1.1 (texto en fonts/OFL.txt)"
+notes = "Fuente de la interfaz: acentos y signos que la fuente por defecto de Bevy no trae."

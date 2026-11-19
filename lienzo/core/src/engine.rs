@@ -6,7 +6,9 @@
 use crate::brush::spec;
 use crate::director::{compose, Event};
 use crate::motif;
-use crate::render::{db, depth_cutoff, envelope, pitch, SampleBank, Stereo, SR};
+use crate::render::{
+    db, depth_cutoff, envelope, pcm_f32, pitch, to_pcm, Pcm, SampleBank, Stereo, SR,
+};
 use crate::rng::Rng;
 use crate::scene::Scene;
 use crate::theory::degree_to_midi;
@@ -14,7 +16,7 @@ use std::sync::Arc;
 
 /// Una nota (o sonido) en curso: su buffer ya remuestreado, envuelto y filtrado.
 struct Voice {
-    buf: Arc<Stereo>,
+    buf: Arc<Pcm>,
     start: usize,
     gl: f32,
     gr: f32,
@@ -141,7 +143,7 @@ impl Default for EngineOptions {
 
 /// Un ambiente en bucle: cuándo toca programar la siguiente pasada.
 struct AmbienceLoop {
-    pieces: Vec<(Arc<Stereo>, f32, f32)>, // (buffer ya remuestreado, ganancia, paneo)
+    pieces: Vec<(Arc<Pcm>, f32, f32)>, // (buffer ya remuestreado, ganancia, paneo)
     next_t: Vec<f64>,
     gain: f32,
 }
@@ -219,7 +221,7 @@ impl Engine {
                     let mut next_t = vec![];
                     for (semis, g, pan, offset) in [(0.0, 1.0, -0.2, 0.0), (-3.0, 0.7, 0.3, 7.0)] {
                         let s = envelope(pitch(src, semis), 3.0, None, 3.0);
-                        pieces.push((Arc::new(s), g * db(-6.0), pan));
+                        pieces.push((Arc::new(to_pcm(&s)), g * db(-6.0), pan));
                         next_t.push(now + offset);
                     }
                     self.ambiences.push(AmbienceLoop {
@@ -290,7 +292,7 @@ impl Engine {
                     return;
                 };
                 let clip = &clips[self.rng.below(clips.len())];
-                let mut buf = clip.clone();
+                let mut buf: Stereo = clip.iter().map(|s| pcm_f32(*s)).collect();
                 let mut lp = OnePole::new(depth_cutoff(*depth).min(2500.0));
                 for s in buf.iter_mut() {
                     *s = lp.tick(*s);
@@ -299,10 +301,10 @@ impl Engine {
             }
             Event::Ambience { .. } => return,
         };
-        self.push_voice(Arc::new(buf), t, gain, pan);
+        self.push_voice(Arc::new(to_pcm(&buf)), t, gain, pan);
     }
 
-    fn push_voice(&mut self, buf: Arc<Stereo>, t: f64, gain: f32, pan: f32) {
+    fn push_voice(&mut self, buf: Arc<Pcm>, t: f64, gain: f32, pan: f32) {
         let theta = (pan.clamp(-1.0, 1.0) + 1.0) * std::f32::consts::FRAC_PI_4;
         self.voices.push(Voice {
             buf,
@@ -367,7 +369,7 @@ impl Engine {
             let count = avail.min(block_end - from);
             let o = from - clock;
             for k in 0..count {
-                let s = v.buf[off + k];
+                let s = pcm_f32(v.buf[off + k]);
                 out[o + k][0] += s[0] * v.gl;
                 out[o + k][1] += s[1] * v.gr;
             }

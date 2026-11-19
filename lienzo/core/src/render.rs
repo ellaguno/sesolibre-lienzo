@@ -8,6 +8,24 @@ use std::path::{Path, PathBuf};
 pub const SR: u32 = 48_000;
 
 pub type Stereo = Vec<[f32; 2]>;
+/// Muestras almacenadas: 16 bits, la mitad de memoria que f32. Se mezcla en f32.
+pub type Pcm = Vec<[i16; 2]>;
+
+pub fn to_pcm(s: &Stereo) -> Pcm {
+    s.iter()
+        .map(|f| {
+            [
+                (f[0].clamp(-1.0, 1.0) * 32767.0) as i16,
+                (f[1].clamp(-1.0, 1.0) * 32767.0) as i16,
+            ]
+        })
+        .collect()
+}
+
+#[inline]
+pub fn pcm_f32(s: [i16; 2]) -> [f32; 2] {
+    [s[0] as f32 / 32768.0, s[1] as f32 / 32768.0]
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum RenderError {
@@ -95,9 +113,9 @@ fn read_wav_bytes(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
 
 /// Las muestras curadas, en memoria.
 pub struct SampleBank {
-    instruments: HashMap<Instrument, Vec<(i32, Stereo)>>,
-    ambience: HashMap<String, Stereo>,
-    events: HashMap<String, Vec<Stereo>>,
+    instruments: HashMap<Instrument, Vec<(i32, Pcm)>>,
+    ambience: HashMap<String, Pcm>,
+    events: HashMap<String, Vec<Pcm>>,
 }
 
 impl SampleBank {
@@ -120,7 +138,7 @@ impl SampleBank {
 
         // Se decodifica en paralelo: ~90 archivos Vorbis y en un teléfono el
         // arranque se nota.
-        let decoded: Vec<Result<(String, Stereo), RenderError>> = std::thread::scope(|sc| {
+        let decoded: Vec<Result<(String, Pcm), RenderError>> = std::thread::scope(|sc| {
             let workers = 8;
             let chunks: Vec<Vec<&str>> = (0..workers)
                 .map(|w| paths.iter().copied().skip(w).step_by(workers).collect())
@@ -134,7 +152,7 @@ impl SampleBank {
                             .map(|rel| {
                                 let bytes =
                                     src.read(rel).map_err(|e| RenderError::Io(rel.into(), e))?;
-                                Ok((rel.to_string(), decode(Path::new(rel), bytes)?))
+                                Ok((rel.to_string(), to_pcm(&decode(Path::new(rel), bytes)?)))
                             })
                             .collect::<Vec<_>>()
                     })
@@ -146,10 +164,10 @@ impl SampleBank {
                 .collect()
         });
 
-        let mut instruments: HashMap<Instrument, Vec<(i32, Stereo)>> = HashMap::new();
+        let mut instruments: HashMap<Instrument, Vec<(i32, Pcm)>> = HashMap::new();
         let mut ambience = HashMap::new();
-        let mut events: HashMap<String, Vec<Stereo>> = HashMap::new();
-        let mut decoded: Vec<(String, Stereo)> = decoded.into_iter().collect::<Result<_, _>>()?;
+        let mut events: HashMap<String, Vec<Pcm>> = HashMap::new();
+        let mut decoded: Vec<(String, Pcm)> = decoded.into_iter().collect::<Result<_, _>>()?;
         decoded.sort_by(|a, b| a.0.cmp(&b.0));
         for (rel, audio) in decoded {
             let p = Path::new(&rel);
@@ -194,15 +212,15 @@ impl SampleBank {
         })
     }
 
-    pub fn ambience(&self, name: &str) -> Option<&Stereo> {
+    pub fn ambience(&self, name: &str) -> Option<&Pcm> {
         self.ambience.get(name)
     }
 
-    pub fn event_clips(&self, name: &str) -> Option<&Vec<Stereo>> {
+    pub fn event_clips(&self, name: &str) -> Option<&Vec<Pcm>> {
         self.events.get(name)
     }
 
-    pub fn nearest(&self, inst: Instrument, midi: i32) -> (i32, &Stereo) {
+    pub fn nearest(&self, inst: Instrument, midi: i32) -> (i32, &Pcm) {
         let notes = &self.instruments[&inst];
         let (m, s) = notes.iter().min_by_key(|(m, _)| (m - midi).abs()).unwrap();
         (*m, s)
@@ -216,9 +234,9 @@ pub fn db(x: f32) -> f32 {
 }
 
 /// Remuestreo lineal por semitonos. Cambia la duración, como una cinta.
-pub fn pitch(src: &Stereo, semis: f32) -> Stereo {
+pub fn pitch(src: &Pcm, semis: f32) -> Stereo {
     if semis.abs() < 1e-4 {
-        return src.clone();
+        return src.iter().map(|s| pcm_f32(*s)).collect();
     }
     let ratio = 2f32.powf(semis / 12.0);
     let n = (src.len() as f32 / ratio) as usize;
@@ -227,8 +245,8 @@ pub fn pitch(src: &Stereo, semis: f32) -> Stereo {
             let pos = i as f32 * ratio;
             let j = pos as usize;
             let f = pos - j as f32;
-            let a = src[j.min(src.len() - 1)];
-            let b = src[(j + 1).min(src.len() - 1)];
+            let a = pcm_f32(src[j.min(src.len() - 1)]);
+            let b = pcm_f32(src[(j + 1).min(src.len() - 1)]);
             [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
         })
         .collect()
@@ -289,7 +307,7 @@ mod tests {
 
     #[test]
     fn pitch_changes_length() {
-        let src: Stereo = (0..1000).map(|i| [i as f32, 0.0]).collect();
+        let src: Pcm = (0..1000).map(|i| [i as i16, 0]).collect();
         assert_eq!(pitch(&src, 12.0).len(), 500);
         assert_eq!(pitch(&src, 0.0).len(), 1000);
     }

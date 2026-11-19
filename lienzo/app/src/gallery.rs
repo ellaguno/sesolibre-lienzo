@@ -4,12 +4,12 @@
 
 use crate::cards::{self, Owned, SpriteMaterials};
 use crate::draw::DrawState;
+use crate::material::CardMaterial;
 use crate::world::Common;
 use crate::Obra;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
 use bevy::picking::events::PointerClick;
-use crate::material::CardMaterial;
 use bevy::prelude::*;
 use bevy::text::FontSize;
 use lienzo_core::Scene;
@@ -165,7 +165,7 @@ const BG: Color = Color::srgba(0.02, 0.07, 0.14, 0.92);
 const BTN: Color = Color::srgba(0.10, 0.26, 0.38, 0.9);
 const TXT: Color = Color::srgb(0.88, 0.94, 0.96);
 
-pub fn setup(mut commands: Commands) {
+pub fn setup(mut commands: Commands, font: Res<crate::ui::UiFont>) {
     commands
         .spawn((
             GalleryRoot,
@@ -188,6 +188,7 @@ pub fn setup(mut commands: Commands) {
             p.spawn((
                 Text::new("Galería"),
                 TextFont {
+                    font: font.0.clone().into(),
                     font_size: FontSize::Px(20.0),
                     ..default()
                 },
@@ -199,10 +200,10 @@ pub fn setup(mut commands: Commands) {
                 ..default()
             })
             .with_children(|row| {
-                button(row, GalleryAction::New, "nueva obra");
-                button(row, GalleryAction::Save, "guardar");
-                button(row, GalleryAction::Export, "exportar audio");
-                button(row, GalleryAction::Close, "cerrar");
+                button(row, &font.0, GalleryAction::New, "nueva obra");
+                button(row, &font.0, GalleryAction::Save, "guardar");
+                button(row, &font.0, GalleryAction::Export, "exportar audio");
+                button(row, &font.0, GalleryAction::Close, "cerrar");
             });
             p.spawn((
                 GalleryList,
@@ -217,7 +218,7 @@ pub fn setup(mut commands: Commands) {
         });
 }
 
-fn button(row: &mut ChildSpawnerCommands, action: GalleryAction, label: &str) {
+fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: GalleryAction, label: &str) {
     row.spawn((
         action,
         Node {
@@ -231,6 +232,7 @@ fn button(row: &mut ChildSpawnerCommands, action: GalleryAction, label: &str) {
         b.spawn((
             Text::new(label.to_string()),
             TextFont {
+                font: font.clone().into(),
                 font_size: FontSize::Px(14.0),
                 ..default()
             },
@@ -444,6 +446,7 @@ pub fn apply(
 /// Muestra u oculta el panel y reconstruye la lista cuando hace falta.
 pub fn refresh(
     mut g: ResMut<Gallery>,
+    font: Res<crate::ui::UiFont>,
     mut commands: Commands,
     mut root: Query<&mut Node, With<GalleryRoot>>,
     list: Query<Entity, With<GalleryList>>,
@@ -463,6 +466,7 @@ pub fn refresh(
             p.spawn((
                 Text::new("Todavía no hay obras guardadas. Dibuja algo y pulsa S."),
                 TextFont {
+                    font: font.0.clone().into(),
                     font_size: FontSize::Px(14.0),
                     ..default()
                 },
@@ -472,6 +476,7 @@ pub fn refresh(
         for e in &g.entries {
             button(
                 p,
+                &font.0,
                 GalleryAction::Open(e.path.clone()),
                 &format!("{}  ·  {} trazos", e.title, e.strokes),
             );

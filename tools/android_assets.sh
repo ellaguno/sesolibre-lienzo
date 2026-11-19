@@ -9,5 +9,6 @@ cp -r "$ROOT/assets/sprites/cut" "$DST/sprites/"
 for d in instruments ambience events; do cp -r "$ROOT/assets/audio/$d" "$DST/audio/"; done
 cp "$ROOT/assets/audio/pack.txt" "$DST/audio/"
 cp "$ROOT/assets/manifest.toml" "$DST/"
+cp -r "$ROOT/assets/fonts" "$DST/"
 find "$DST" -name "*.wav" -delete
 echo "assets para el APK en $DST: $(du -sh "$DST" | cut -f1)"

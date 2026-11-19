@@ -1,8 +1,8 @@
 //! Los trazos como cartas de papel en el espacio. Cada pincel decide qué
 //! sprites pone a lo largo del trazo, de qué tamaño y cómo se mueven.
 
-use crate::world::{to_world, Billboard, Common};
 use crate::material::CardMaterial;
+use crate::world::{to_world, Billboard, Common};
 use bevy::prelude::*;
 use lienzo_core::{Brush, Stroke};
 use std::collections::HashMap;
@@ -22,7 +22,9 @@ impl SpriteMaterials {
         self.cache
             .entry(name)
             .or_insert_with(|| {
-                materials.add(CardMaterial::sprite(assets.load(format!("sprites/cut/{name}.png"))))
+                materials.add(CardMaterial::sprite(
+                    assets.load(format!("sprites/cut/{name}.png")),
+                ))
             })
             .clone()
     }

@@ -123,20 +123,20 @@ pub fn run() -> anyhow::Result<()> {
 
     let mut app = App::new();
     app.add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Lienzo".into(),
-                        resolution: WindowResolution::new(1280, 800),
-                        ..default()
-                    }),
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Lienzo".into(),
+                    resolution: WindowResolution::new(1280, 800),
                     ..default()
-                })
-                .set(asset_plugin)
-                .set(render_plugin()),
-        );
+                }),
+                ..default()
+            })
+            .set(asset_plugin)
+            .set(render_plugin()),
+    );
     bevy::asset::embedded_asset!(app, "card.wesl");
-    app        .add_plugins(bevy::pbr::MaterialPlugin::<material::CardMaterial>::default())
+    app.add_plugins(bevy::pbr::MaterialPlugin::<material::CardMaterial>::default())
         .insert_resource(Obra {
             scene,
             dirty: false,
@@ -153,7 +153,14 @@ pub fn run() -> anyhow::Result<()> {
         .init_resource::<cards::SpriteMaterials>()
         .add_systems(
             Startup,
-            (world::setup, cards::spawn_scene, ui::setup, gallery::setup).chain(),
+            (
+                ui::load_font,
+                world::setup,
+                cards::spawn_scene,
+                ui::setup,
+                gallery::setup,
+            )
+                .chain(),
         )
         .add_observer(ui::on_click)
         .add_observer(gallery::on_click)

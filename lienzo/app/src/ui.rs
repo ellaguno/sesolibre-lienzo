@@ -27,7 +27,7 @@ fn font_px() -> f32 {
 }
 
 /// Separador en los textos. La fuente por defecto de Bevy no trae "·".
-const SEP: &str = " - ";
+const SEP: &str = " · ";
 
 #[derive(Component)]
 pub struct PaletteRoot;
@@ -48,7 +48,15 @@ const BTN: Color = Color::srgba(0.10, 0.26, 0.38, 0.9);
 const BTN_ON: Color = Color::srgba(0.85, 0.55, 0.30, 0.95);
 const TXT: Color = Color::srgb(0.88, 0.94, 0.96);
 
-pub fn setup(mut commands: Commands) {
+/// La fuente de toda la interfaz (Noto Sans, OFL).
+#[derive(Resource)]
+pub struct UiFont(pub Handle<Font>);
+
+pub fn load_font(mut commands: Commands, assets: Res<AssetServer>) {
+    commands.insert_resource(UiFont(assets.load("fonts/NotoSans-Variable.ttf")));
+}
+
+pub fn setup(mut commands: Commands, font: Res<UiFont>) {
     commands
         .spawn((
             PaletteRoot,
@@ -71,26 +79,32 @@ pub fn setup(mut commands: Commands) {
             for (i, b) in Brush::ALL.iter().enumerate() {
                 button(
                     row,
+                    &font.0,
                     Action::Pick(*b),
                     &format!("{} {}", i + 1, brush_name(*b)),
                 );
             }
             spacer(row);
-            button(row, Action::Undo, "deshacer");
-            button(row, Action::Gallery, "galería");
-            button(row, Action::Contemplate, "contemplar");
+            button(row, &font.0, Action::Undo, "deshacer");
+            button(row, &font.0, Action::Gallery, "galería");
+            button(row, &font.0, Action::Contemplate, "contemplar");
         });
     commands.spawn((
         Hint,
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(14.0),
-            top: Val::Px(if cfg!(target_os = "android") { 56.0 } else { 12.0 }),
+            top: Val::Px(if cfg!(target_os = "android") {
+                56.0
+            } else {
+                12.0
+            }),
             right: Val::Px(14.0),
             ..default()
         },
         Text::new(""),
         TextFont {
+            font: font.0.clone().into(),
             font_size: FontSize::Px(font_px()),
             ..default()
         },
@@ -105,7 +119,7 @@ fn spacer(row: &mut ChildSpawnerCommands) {
     });
 }
 
-fn button(row: &mut ChildSpawnerCommands, action: Action, label: &str) {
+fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: Action, label: &str) {
     row.spawn((
         action,
         Node {
@@ -119,6 +133,7 @@ fn button(row: &mut ChildSpawnerCommands, action: Action, label: &str) {
         b.spawn((
             Text::new(label.to_string()),
             TextFont {
+                font: font.clone().into(),
                 font_size: FontSize::Px(font_px()),
                 ..default()
             },
@@ -188,17 +203,21 @@ pub fn refresh(
         };
         let s = if st.contemplate {
             format!(
-                "contemplacion{SEP}{} trazos{SEP}toca un elemento para que actue{SEP}A o Esc vuelve a dibujar",
+                "contemplación{SEP}{} trazos{SEP}toca un elemento para que actúe{SEP}A o Esc vuelve a dibujar",
                 obra.scene.strokes.len()
             )
         } else {
             let ayuda = if cfg!(target_os = "android") {
                 "un dedo dibuja{SEP}dos dedos orbitan"
             } else {
-                "([ ] ajusta){SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galeria{SEP}A contemplar"
+                "([ ] ajusta){SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galería{SEP}A contemplar"
             }
             .replace("{SEP}", SEP);
-            format!("{}{SEP}plano a {:.0} {ayuda}", brush_name(st.brush), st.depth)
+            format!(
+                "{}{SEP}plano a {:.0} {ayuda}",
+                brush_name(st.brush),
+                st.depth
+            )
         };
         let s = format!("{titulo}\n{s}\n{}", gallery.status);
         if text.0 != s {

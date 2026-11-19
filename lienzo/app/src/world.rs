@@ -1,10 +1,10 @@
 //! El abismo vacío: cámara, niebla, fondo, suelo, rayos y partículas. Lo que se
 //! ve antes del primer trazo, y lo que ya suena.
 
+use crate::material::CardMaterial;
 use crate::orbit::Orbit;
 use crate::textures;
 use bevy::post_process::bloom::Bloom;
-use crate::material::CardMaterial;
 use bevy::prelude::*;
 use bevy::render::view::Tonemapping;
 
@@ -98,7 +98,10 @@ pub fn setup(
     }
 
     // partículas en suspensión
-    let dot = materials.add(CardMaterial::additive(images.add(textures::soft_dot()), 0.35));
+    let dot = materials.add(CardMaterial::additive(
+        images.add(textures::soft_dot()),
+        0.35,
+    ));
     for _ in 0..350 {
         let s = 0.03 + 0.07 * rnd();
         commands.spawn((

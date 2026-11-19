@@ -33,7 +33,11 @@ pub struct CardMaterial {
 
 impl CardMaterial {
     fn new(texture: Handle<Image>, color: Color, alpha: AlphaMode, fog: bool) -> Self {
-        let premul = if matches!(alpha, AlphaMode::Add) { 1.0 } else { 0.0 };
+        let premul = if matches!(alpha, AlphaMode::Add) {
+            1.0
+        } else {
+            0.0
+        };
         CardMaterial {
             color: color.into(),
             fog_color: FOG_COLOR.into(),
@@ -60,14 +64,20 @@ impl CardMaterial {
 
     /// Aditivo (luz, partículas), con niebla.
     pub fn additive(texture: Handle<Image>, alpha: f32) -> Self {
-        Self::new(texture, Color::srgba(1.0, 1.0, 1.0, alpha), AlphaMode::Add, true)
+        Self::new(
+            texture,
+            Color::srgba(1.0, 1.0, 1.0, alpha),
+            AlphaMode::Add,
+            true,
+        )
     }
 }
 
 impl Material for CardMaterial {
     fn fragment_shader() -> ShaderRef {
         ShaderRef::Path(
-            AssetPath::from_path_buf(bevy::asset::embedded_path!("card.wesl")).with_source("embedded"),
+            AssetPath::from_path_buf(bevy::asset::embedded_path!("card.wesl"))
+                .with_source("embedded"),
         )
     }
 
