@@ -10,9 +10,16 @@ use bevy::prelude::*;
 use lienzo_core::terrain::height_at;
 use lienzo_core::Scene;
 
-/// Extensión del relieve en unidades de mundo (más allá, el suelo es plano).
-pub const EXTENT: f32 = 16.0;
-pub const CELLS: usize = 112;
+/// Extensión de la malla del suelo en unidades de mundo. La rejilla es fina en
+/// el centro (donde se dibuja) y gruesa hacia fuera: una sola malla cubre
+/// hasta la pared del fondo, sin plano aparte que tape las fosas.
+pub const EXTENT: f32 = 95.0;
+pub const CELLS: usize = 160;
+const WARP: f32 = 2.6;
+
+fn warp(u: f32) -> f32 {
+    u.signum() * u.abs().powf(WARP) * EXTENT
+}
 
 #[derive(Component)]
 pub struct Terrain;
@@ -51,14 +58,14 @@ pub fn floor_y(scene: &Scene, x: f32, z: f32) -> f32 {
 
 pub fn build_mesh(scene: &Scene) -> Mesh {
     let n = CELLS + 1;
-    let step = 2.0 * EXTENT / CELLS as f32;
     let mut pos = Vec::with_capacity(n * n);
     let mut uv = Vec::with_capacity(n * n);
     let mut heights = vec![0.0f32; n * n];
+    let coord = |k: usize| warp(-1.0 + 2.0 * k as f32 / CELLS as f32);
     for j in 0..n {
         for i in 0..n {
-            let x = -EXTENT + i as f32 * step;
-            let z = -EXTENT + j as f32 * step;
+            let x = coord(i);
+            let z = coord(j);
             // fuera del volumen dibujable el relieve se apaga suavemente
             let edge = ((HALF_W * 1.6 - x.abs().max(z.abs())) / (HALF_W * 0.6)).clamp(0.0, 1.0);
             let y = floor_y(scene, x, z) * edge;
@@ -75,8 +82,10 @@ pub fn build_mesh(scene: &Scene) -> Mesh {
                 let jj = jj.clamp(0, n as isize - 1) as usize;
                 heights[jj * n + ii]
             };
-            let dx = (h(i as isize + 1, j as isize) - h(i as isize - 1, j as isize)) / (2.0 * step);
-            let dz = (h(i as isize, j as isize + 1) - h(i as isize, j as isize - 1)) / (2.0 * step);
+            let sx = (coord((i + 1).min(CELLS)) - coord(i.saturating_sub(1))).max(1e-4);
+            let sz = (coord((j + 1).min(CELLS)) - coord(j.saturating_sub(1))).max(1e-4);
+            let dx = (h(i as isize + 1, j as isize) - h(i as isize - 1, j as isize)) / sx;
+            let dz = (h(i as isize, j as isize + 1) - h(i as isize, j as isize - 1)) / sz;
             let nrm = Vec3::new(-dx, 1.0, -dz).normalize();
             normals.push([nrm.x, nrm.y, nrm.z]);
         }
