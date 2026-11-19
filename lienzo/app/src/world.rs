@@ -33,6 +33,12 @@ pub struct Particle {
 #[derive(Component)]
 pub struct Billboard;
 
+#[derive(Component)]
+pub struct Ray {
+    tilt: f32,
+    phase: f32,
+}
+
 #[derive(Resource)]
 pub struct Common {
     pub quad: Handle<Mesh>,
@@ -71,7 +77,9 @@ pub fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop.clone()),
-        Transform::from_xyz(0.0, -20.0, 0.0),
+        // centrada a la altura de la mirada: el horizonte del fondo coincide
+        // con el borde del suelo, y la niebla los funde.
+        Transform::from_xyz(0.0, 2.0, 0.0),
     ));
 
     // suelo
@@ -100,6 +108,10 @@ pub fn setup(
             Transform::from_xyz(x, 9.0, z)
                 .with_rotation(Quat::from_rotation_z(tilt))
                 .with_scale(Vec3::new(w, 20.0, 1.0)),
+            Ray {
+                tilt,
+                phase: rnd() * 6.28,
+            },
         ));
     }
 
@@ -133,6 +145,17 @@ pub fn setup(
         sand,
         ray,
     });
+}
+
+/// Los rayos oscilan despacio, como la luz que atraviesa un oleaje lento.
+pub fn sway_rays(time: Res<Time>, mut q: Query<(&mut Transform, &Ray)>) {
+    let t = time.elapsed_secs();
+    for (mut tf, r) in q.iter_mut() {
+        let a = r.tilt + 0.06 * (t * 0.17 + r.phase).sin();
+        tf.rotation = Quat::from_rotation_z(a);
+        tf.scale.x = tf.scale.x.signum() * tf.scale.x.abs().max(0.1);
+        tf.translation.x += 0.02 * (t * 0.11 + r.phase).cos() * time.delta_secs();
+    }
 }
 
 pub fn drift_particles(time: Res<Time>, mut q: Query<(&mut Transform, &Particle)>) {

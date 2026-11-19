@@ -211,6 +211,7 @@ pub fn run() -> anyhow::Result<()> {
                 water::apply,
                 orbit::control,
                 world::drift_particles,
+                world::sway_rays,
                 cards::animate,
                 world::billboards,
                 draw::title,

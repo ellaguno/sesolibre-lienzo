@@ -131,6 +131,10 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
             ..default()
         },
         TextColor(Color::srgba(0.8, 0.9, 0.95, 0.75)),
+        TextShadow {
+            offset: Vec2::new(1.0, 1.0),
+            color: Color::srgba(0.0, 0.0, 0.0, 0.55),
+        },
     ));
 }
 
@@ -162,6 +166,10 @@ fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: Action, l
                 ..default()
             },
             TextColor(TXT),
+            TextShadow {
+                offset: Vec2::new(1.0, 1.0),
+                color: Color::srgba(0.0, 0.0, 0.0, 0.45),
+            },
         ));
     });
 }
