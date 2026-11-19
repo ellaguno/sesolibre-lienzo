@@ -26,7 +26,8 @@ pub struct CardMaterial {
     #[uniform(0)]
     pub params: Vec4,
     /// x: multiplicador de cáusticas del agua · y: escala espacial de las
-    /// cáusticas · z, w: sin uso.
+    /// cáusticas · z: 1 = es el fondo (degradado por altura: `color` arriba,
+    /// `fog_color` en el horizonte) · w: sin uso.
     #[uniform(0)]
     pub extra: Vec4,
     #[texture(1)]
@@ -72,9 +73,12 @@ impl CardMaterial {
         Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.9)
     }
 
-    /// Opaco sin niebla (fondo).
-    pub fn backdrop(texture: Handle<Image>) -> Self {
-        Self::new(texture, Color::WHITE, AlphaMode::Opaque, false)
+    /// El fondo: degradado por altura calculado en el shader. `color` es el
+    /// agua junto a la superficie; `fog_color`, el horizonte.
+    pub fn backdrop(texture: Handle<Image>, top: Color) -> Self {
+        let mut m = Self::new(texture, top, AlphaMode::Opaque, false);
+        m.extra.z = 1.0;
+        m
     }
 
     /// Aditivo (luz, partículas), con niebla.

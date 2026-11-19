@@ -29,6 +29,12 @@ fn caustics(p: vec3<f32>, t: f32) -> f32 {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    if material.extra.z > 0.5 {
+        // Fondo: del horizonte (a la altura de la mirada, ~2) a la superficie.
+        let h = clamp((in.world_position.y - 2.0) / 45.0, 0.0, 1.0);
+        let k = h * h * (3.0 - 2.0 * h);
+        return vec4<f32>(mix(material.fog_color.rgb, material.color.rgb, k), 1.0);
+    }
     var c = material.color * textureSample(card_texture, card_sampler, in.uv);
     let caustic_strength = material.params.w * material.extra.x;
     if caustic_strength > 0.001 {

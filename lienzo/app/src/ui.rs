@@ -83,7 +83,7 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
             BackgroundColor(BG),
         ))
         .with_children(|row| {
-            for (i, b) in Brush::ALL.iter().enumerate() {
+            for b in Brush::ALL.iter() {
                 button(row, &font.0, Action::Pick(*b), brush_name(*b));
             }
             spacer(row);

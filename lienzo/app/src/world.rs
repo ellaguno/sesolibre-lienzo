@@ -72,7 +72,8 @@ pub fn setup(
     // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
     // Gire a donde gire la cámara, siempre hay agua.
     let backdrop = materials.add(CardMaterial::backdrop(
-        images.add(textures::backdrop(lk.top, lk.bottom)),
+        images.add(textures::soft_dot()),
+        Color::srgb(lk.top[0], lk.top[1], lk.top[2]),
     ));
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
@@ -85,7 +86,7 @@ pub fn setup(
     // suelo
     let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(140.0, 140.0))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
         MeshMaterial3d(sand.clone()),
         Transform::from_xyz(0.0, 0.0, -6.0),
     ));

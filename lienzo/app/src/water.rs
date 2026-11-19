@@ -72,7 +72,7 @@ fn raw_look(w: Water) -> Look {
             bottom: [0.02, 0.10, 0.30],
             fog: Color::srgb(0.10, 0.32, 0.58),
             fog_density: 0.036,
-            sand: [0.16, 0.16, 0.19],
+            sand: [0.30, 0.29, 0.32],
             rays: 0.80,
             particles: 0.30,
             clear: Color::srgb(0.02, 0.10, 0.30),
@@ -120,10 +120,12 @@ pub fn apply(
         m.extra.x = lk.caustics;
     }
     if let Some(mut m) = materials.get_mut(&common.backdrop) {
-        m.texture = images.add(textures::backdrop(lk.top, lk.bottom));
+        m.color = Color::srgb(lk.top[0], lk.top[1], lk.top[2]).into();
     }
     if let Some(mut m) = materials.get_mut(&common.sand) {
         m.texture = images.add(textures::sand(lk.sand));
+        // el suelo se pierde antes en la niebla: a media distancia ya es agua
+        m.params.x = lk.fog_density * 1.9;
     }
     if let Some(mut m) = materials.get_mut(&common.ray) {
         m.color = Color::srgba(1.0, 1.0, 1.0, lk.rays).into();
