@@ -3,6 +3,7 @@
 //! del plano, Z deshacer, C vaciar, S guardar.
 
 use crate::cards::{self, Owned, SpriteMaterials};
+use crate::input::Pointer;
 use crate::orbit::Orbit;
 use crate::world::{to_core, Common, HALF_W, HEIGHT};
 use crate::Obra;
@@ -114,13 +115,13 @@ pub fn keys(
 /// Dónde cae el cursor según el pincel: en el suelo, o en el plano de dibujo
 /// paralelo a la cámara.
 fn cursor_point(
-    window: &Window,
+    pos: Option<Vec2>,
     cam: &Camera,
     cam_tf: &GlobalTransform,
     brush: Brush,
     depth: f32,
 ) -> Option<Vec3> {
-    let pos = window.cursor_position()?;
+    let pos = pos?;
     let ray = cam.viewport_to_world(cam_tf, pos).ok()?;
     let o = ray.origin;
     let d: Vec3 = ray.direction.into();
@@ -153,7 +154,7 @@ fn cursor_point(
 }
 
 pub fn draw(
-    buttons: Res<ButtonInput<MouseButton>>,
+    ptr: Res<Pointer>,
     time: Res<Time>,
     windows: Query<&Window, With<PrimaryWindow>>,
     cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
@@ -175,18 +176,27 @@ pub fn draw(
         return;
     }
     // la paleta ocupa la franja inferior: ahí no se dibuja
-    if let Some(c) = window.cursor_position() {
-        if c.y > window.height() - crate::ui::PALETTE_H && st.started.is_none() {
+    if let Some(c) = ptr.pos {
+        if c.y > window.height() - crate::ui::palette_h() && st.started.is_none() {
             return;
         }
     }
+    if ptr.cancel && st.started.is_some() {
+        // entró un segundo dedo: era una órbita, no un trazo
+        st.started = None;
+        st.points.clear();
+        for e in st.preview.drain(..) {
+            commands.entity(e).despawn();
+        }
+        return;
+    }
 
-    if buttons.just_pressed(MouseButton::Left) {
+    if ptr.just_down {
         st.points.clear();
         st.started = Some(time.elapsed_secs_f64());
     }
-    if buttons.pressed(MouseButton::Left) && st.started.is_some() {
-        if let Some(p) = cursor_point(window, cam, cam_tf, brush, depth) {
+    if ptr.down && st.started.is_some() {
+        if let Some(p) = cursor_point(ptr.pos, cam, cam_tf, brush, depth) {
             let far_enough = st
                 .points
                 .last()
@@ -206,7 +216,7 @@ pub fn draw(
             }
         }
     }
-    if buttons.just_released(MouseButton::Left) {
+    if ptr.just_up {
         if let Some(t0) = st.started.take() {
             for e in st.preview.drain(..) {
                 commands.entity(e).despawn();
@@ -244,20 +254,19 @@ pub fn draw(
 /// En contemplación, tocar un elemento lo hace actuar: suena su motivo y la
 /// carta da un pequeño pulso. Se elige la carta más cercana al cursor en pantalla.
 pub fn touch(
-    buttons: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
+    ptr: Res<Pointer>,
     cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
     st: Res<DrawState>,
     link: Res<crate::audio::AudioLink>,
     mut cards: Query<(&GlobalTransform, &Owned, &mut cards::Card)>,
 ) {
-    if !st.contemplate || !buttons.just_pressed(MouseButton::Left) {
+    if !st.contemplate || !ptr.just_down {
         return;
     }
-    let (Ok(window), Ok((cam, cam_tf))) = (windows.single(), cams.single()) else {
+    let Ok((cam, cam_tf)) = cams.single() else {
         return;
     };
-    let Some(cursor) = window.cursor_position() else {
+    let Some(cursor) = ptr.pos else {
         return;
     };
     let mut best: Option<(f32, usize)> = None;

@@ -25,7 +25,11 @@ crate-type = ["lib", "cdylib"]
 path = "src/lib.rs"
 
 [target.'cfg(target_os = "android")'.dependencies]
-bevy = { version = "0.20", default-features = false, features = ["android-native-activity"] }
+# El backend Vulkan de wgpu aborta en los drivers Mali; en Android se usa GLES.
+# `webgl2` hace que los shaders no usen storage buffers en el vértice, que GLES
+# no ofrece (sin eso el layout de la vista falla con VERTEX_STORAGE).
+bevy = { version = "0.20", default-features = false, features = ["android-native-activity", "webgl2"] }
+bevy_render = { version = "0.20", features = ["gles"] }
 
 [package.metadata.android]
 package = "org.sesolibre.lienzo"

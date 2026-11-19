@@ -8,7 +8,23 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 use lienzo_core::Brush;
 
-pub const PALETTE_H: f32 = 84.0;
+/// Alto de la franja de la paleta. En pantalla táctil es más alta: botones de
+/// dedo y dos filas.
+pub fn palette_h() -> f32 {
+    if cfg!(target_os = "android") {
+        180.0
+    } else {
+        84.0
+    }
+}
+
+fn font_px() -> f32 {
+    if cfg!(target_os = "android") {
+        18.0
+    } else {
+        14.0
+    }
+}
 
 #[derive(Component)]
 pub struct PaletteRoot;
@@ -38,7 +54,9 @@ pub fn setup(mut commands: Commands) {
                 left: Val::Px(0.0),
                 right: Val::Px(0.0),
                 bottom: Val::Px(0.0),
-                height: Val::Px(PALETTE_H),
+                height: Val::Px(palette_h()),
+                flex_wrap: FlexWrap::Wrap,
+                row_gap: Val::Px(8.0),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 column_gap: Val::Px(8.0),
@@ -69,7 +87,7 @@ pub fn setup(mut commands: Commands) {
         },
         Text::new(""),
         TextFont {
-            font_size: FontSize::Px(14.0),
+            font_size: FontSize::Px(font_px()),
             ..default()
         },
         TextColor(Color::srgba(0.8, 0.9, 0.95, 0.75)),
@@ -87,7 +105,7 @@ fn button(row: &mut ChildSpawnerCommands, action: Action, label: &str) {
     row.spawn((
         action,
         Node {
-            padding: UiRect::axes(Val::Px(12.0), Val::Px(9.0)),
+            padding: UiRect::axes(Val::Px(font_px() * 0.9), Val::Px(font_px() * 0.65)),
             border_radius: BorderRadius::all(Val::Px(8.0)),
             ..default()
         },
@@ -97,7 +115,7 @@ fn button(row: &mut ChildSpawnerCommands, action: Action, label: &str) {
         b.spawn((
             Text::new(label.to_string()),
             TextFont {
-                font_size: FontSize::Px(14.0),
+                font_size: FontSize::Px(font_px()),
                 ..default()
             },
             TextColor(TXT),

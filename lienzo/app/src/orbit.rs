@@ -1,8 +1,9 @@
 //! Cámara orbital acotada. Arrastrar gira, rueda acerca. Nunca sale del
 //! volumen ni mira desde abajo del suelo.
 
-use bevy::input::mouse::{MouseMotion, MouseWheel};
+use crate::input::Pointer;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 
 #[derive(Component)]
 pub struct Orbit {
@@ -36,29 +37,23 @@ pub const DIST_MIN: f32 = 7.0;
 pub const DIST_MAX: f32 = 22.0;
 
 pub fn control(
-    mut motion: MessageReader<MouseMotion>,
-    mut wheel: MessageReader<MouseWheel>,
-    buttons: Res<ButtonInput<MouseButton>>,
+    ptr: Res<Pointer>,
     time: Res<Time>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mut q: Query<(&mut Orbit, &mut Transform)>,
 ) {
     let Ok((mut o, mut tf)) = q.single_mut() else {
         return;
     };
-    let mut delta = Vec2::ZERO;
-    for m in motion.read() {
-        delta += m.delta;
-    }
-    if buttons.pressed(MouseButton::Right) || buttons.pressed(MouseButton::Middle) {
+    let delta = ptr.orbit;
+    if delta != Vec2::ZERO {
         o.yaw -= delta.x * 0.004;
         o.pitch += delta.y * 0.004;
         o.idle = 0.0;
     } else {
         o.idle += time.delta_secs();
     }
-    for w in wheel.read() {
-        o.distance -= w.y * 0.8;
-    }
+    o.distance -= ptr.zoom;
     if o.drift && o.idle > 8.0 {
         o.yaw += 0.025 * time.delta_secs() * (time.elapsed_secs() * 0.07).cos();
     }
@@ -66,11 +61,17 @@ pub fn control(
     o.pitch = o.pitch.clamp(PITCH_MIN, PITCH_MAX);
     o.distance = o.distance.clamp(DIST_MIN, DIST_MAX);
 
+    // En vertical (teléfono) la cámara retrocede para que quepa el ancho.
+    let portrait = windows
+        .single()
+        .map(|w| (w.height() / w.width()).max(1.0))
+        .unwrap_or(1.0);
+    let dist = o.distance * (1.0 + 0.55 * (portrait - 1.0));
     let pos = o.target
         + Vec3::new(
             o.yaw.sin() * o.pitch.cos(),
             o.pitch.sin(),
             o.yaw.cos() * o.pitch.cos(),
-        ) * o.distance;
+        ) * dist;
     *tf = Transform::from_translation(pos).looking_at(o.target, Vec3::Y);
 }

@@ -4,6 +4,7 @@ mod audio;
 mod cards;
 mod draw;
 mod gallery;
+mod input;
 mod orbit;
 mod textures;
 mod ui;
@@ -61,6 +62,21 @@ fn project_root() -> PathBuf {
     }
 }
 
+/// Ajustes del renderer. En Android se usa GLES: el backend Vulkan de wgpu
+/// aborta en los drivers Mali (pool de descriptores agotado en un camino que
+/// wgpu considera imposible), y pasa igual con los *binding arrays* apagados.
+fn render_plugin() -> bevy::render::RenderPlugin {
+    use bevy::render::settings::{Backends, WgpuSettings};
+    let mut settings = WgpuSettings::default();
+    if cfg!(target_os = "android") {
+        settings.backends = Some(Backends::GL);
+    }
+    bevy::render::RenderPlugin {
+        render_creation: settings.into(),
+        ..default()
+    }
+}
+
 #[bevy_main]
 pub fn main() {
     if let Err(e) = run() {
@@ -104,7 +120,8 @@ pub fn run() -> anyhow::Result<()> {
                     }),
                     ..default()
                 })
-                .set(asset_plugin),
+                .set(asset_plugin)
+                .set(render_plugin()),
         )
         .insert_resource(Obra {
             scene,
@@ -113,6 +130,7 @@ pub fn run() -> anyhow::Result<()> {
             path,
         })
         .init_resource::<draw::DrawState>()
+        .init_resource::<input::Pointer>()
         .init_resource::<gallery::Gallery>()
         .init_resource::<gallery::Pending>()
         .init_resource::<gallery::Exporting>()
@@ -128,6 +146,7 @@ pub fn run() -> anyhow::Result<()> {
         .add_systems(
             Update,
             (
+                input::gather,
                 gallery::keys,
                 gallery::apply,
                 gallery::refresh,
