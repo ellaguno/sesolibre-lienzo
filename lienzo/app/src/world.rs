@@ -51,6 +51,7 @@ pub struct Common {
     pub rainbow_tex: Handle<Image>,
     pub backdrop: Handle<CardMaterial>,
     pub sand: Handle<CardMaterial>,
+    pub surface: Handle<CardMaterial>,
     pub ray: Handle<CardMaterial>,
 }
 
@@ -64,6 +65,19 @@ pub fn setup(
         Camera3d::default(),
         Transform::from_xyz(0.0, 3.0, 15.0).looking_at(Vec3::new(0.0, 2.2, 0.0), Vec3::Y),
         Tonemapping::AcesFitted,
+        // refracción: la imagen entera ondula despacio (ver `refraction`)
+        bevy::post_process::effect_stack::LensDistortion {
+            intensity: 0.0,
+            ..default()
+        },
+        bevy::post_process::effect_stack::ChromaticAberration {
+            intensity: 0.004,
+            ..default()
+        },
+        bevy::post_process::effect_stack::Vignette {
+            intensity: 0.25,
+            ..default()
+        },
         Bloom {
             intensity: 0.18,
             ..Bloom::NATURAL
@@ -91,6 +105,16 @@ pub fn setup(
 
     // suelo
     let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
+    // la superficie, vista desde abajo
+    let surface = materials.add(CardMaterial::surface(
+        images.add(textures::soft_dot()),
+        Color::srgb(lk.sky[0], lk.sky[1], lk.sky[2]),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
+        MeshMaterial3d(surface.clone()),
+        Transform::from_xyz(0.0, HEIGHT, 0.0),
+    ));
     // el suelo: una sola malla esculpible que llega hasta el fondo
     commands.spawn((
         Mesh3d(meshes.add(crate::terrain::build_mesh(&lienzo_core::Scene::new(0)))),
@@ -115,7 +139,9 @@ pub fn setup(
         commands.spawn((
             Mesh3d(quad.clone()),
             MeshMaterial3d(ray.clone()),
-            Transform::from_xyz(x, 9.0, z)
+            // nacen en la superficie y se apagan hacia abajo: nunca se ven
+            // cortados por arriba
+            Transform::from_xyz(x, HEIGHT - 10.0, z)
                 .with_rotation(Quat::from_rotation_z(tilt))
                 .with_scale(Vec3::new(w, 20.0, 1.0)),
             Ray {
@@ -157,8 +183,45 @@ pub fn setup(
         rainbow_tex: images.add(textures::rainbow()),
         backdrop,
         sand,
+        surface,
         ray,
     });
+}
+
+/// Sensación de estar bajo el agua: la lente respira y se ladea con un oleaje
+/// lento, más cuanto más clara es el agua y más cerca de la superficie está la
+/// cámara; en la vista de dibujo, casi nada (es un papel).
+pub fn refraction(
+    time: Res<Time>,
+    obra: Res<crate::Obra>,
+    st: Res<crate::draw::DrawState>,
+    mut q: Query<
+        (
+            &Transform,
+            &mut bevy::post_process::effect_stack::LensDistortion,
+            &mut bevy::post_process::effect_stack::ChromaticAberration,
+        ),
+        With<Camera3d>,
+    >,
+) {
+    let Ok((tf, mut lens, mut chroma)) = q.single_mut() else {
+        return;
+    };
+    let t = time.elapsed_secs();
+    let clarity = 1.0 - crate::water::look(obra.scene.water).fog_density / 0.05;
+    let near_surface = ((tf.translation.y - 1.0) / (HEIGHT - 1.0)).clamp(0.0, 1.0);
+    let drawing = if st.view == crate::draw::View::Dibujo {
+        0.25
+    } else {
+        1.0
+    };
+    let k = (0.35 + 0.65 * clarity.clamp(0.0, 1.0)) * (0.5 + 0.5 * near_surface) * drawing;
+    let w1 = (t * 0.23).sin();
+    let w2 = (t * 0.17 + 1.3).sin();
+    lens.intensity = 0.035 * k * (0.6 + 0.4 * w1);
+    lens.center = Vec2::new(0.5 + 0.03 * k * w2, 0.5 + 0.02 * k * (t * 0.29 + 0.4).sin());
+    lens.multiplier = Vec2::new(1.0 + 0.15 * k * w2, 1.0 - 0.15 * k * w1);
+    chroma.intensity = 0.0025 + 0.004 * k;
 }
 
 /// Los rayos oscilan despacio, como la luz que atraviesa un oleaje lento.

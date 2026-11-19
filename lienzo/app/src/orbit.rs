@@ -32,13 +32,17 @@ impl Default for Orbit {
             drift: true,
             idle: 99.0,
             top_distance: 17.0,
-            dive_pitch: 0.12,
+            // LIENZO_PITCH=-0.5 arranca mirando hacia arriba (pruebas y capturas)
+            dive_pitch: std::env::var("LIENZO_PITCH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.12),
         }
     }
 }
 
 pub const YAW_LIMIT: f32 = 1.15;
-pub const PITCH_MIN: f32 = -0.05;
+pub const PITCH_MIN: f32 = -0.55;
 pub const PITCH_MAX: f32 = 0.9;
 /// Vista cenital: 65° sobre la horizontal (25° de inclinación respecto a la
 /// vertical), lo justo para leer la altura de las cartas.

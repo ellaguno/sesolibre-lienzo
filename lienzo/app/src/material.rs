@@ -84,6 +84,14 @@ impl CardMaterial {
         m
     }
 
+    /// La superficie del mar vista desde abajo: `color` es el cielo que entra
+    /// por la ventana de Snell; fuera de ella se refleja el agua (fog_color).
+    pub fn surface(texture: Handle<Image>, sky: Color) -> Self {
+        let mut m = Self::new(texture, sky, AlphaMode::Opaque, true);
+        m.extra.z = 2.0;
+        m
+    }
+
     /// Acuarela: mezcla por alfa, teñida de un color, con niebla y cáusticas suaves.
     pub fn watercolor(texture: Handle<Image>, color: Color) -> Self {
         Self::with_caustics(texture, color, AlphaMode::Blend, true, 0.25)

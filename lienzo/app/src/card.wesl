@@ -27,8 +27,34 @@ fn caustics(p: vec3<f32>, t: f32) -> f32 {
 @group(3) @binding(1) var card_texture: texture_2d<f32>;
 @group(3) @binding(2) var card_sampler: sampler;
 
+// Oleaje lento de la superficie: tres ondas que se cruzan, en [-1, 1].
+fn waves(p: vec2<f32>, t: f32) -> f32 {
+    let a = sin(p.x * 0.9 + t * 0.35 + p.y * 0.3);
+    let b = sin(p.y * 1.3 - t * 0.27 + p.x * 0.5);
+    let c = sin((p.x - p.y) * 0.6 + t * 0.19);
+    return (a + b + c) / 3.0;
+}
+
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    if material.extra.z > 1.5 {
+        // Superficie desde abajo. Mirando casi a plomo se ve el cielo por la
+        // ventana de Snell (~48°); más allá, el agua se refleja a sí misma.
+        // El oleaje mueve el borde de la ventana y riza la luz.
+        let to_frag = in.world_position.xyz - view.world_position;
+        let dist = length(to_frag);
+        let up = to_frag.y / max(dist, 0.001);
+        let w = waves(in.world_position.xz, globals.time);
+        let window = smoothstep(0.52 + 0.10 * w, 0.78 + 0.10 * w, up);
+        let ripple = 0.92 + 0.10 * waves(in.world_position.xz * 2.3 + vec2<f32>(11.0, 5.0), globals.time * 1.3);
+        let sky = material.color.rgb * ripple;
+        let mirror = material.fog_color.rgb * (0.75 + 0.2 * w);
+        var s = mix(mirror, sky, window);
+        let d = dist * material.params.x * 0.7;
+        let f = 1.0 - exp(-d * d);
+        s = mix(s, material.fog_color.rgb, f);
+        return vec4<f32>(s, 1.0);
+    }
     if material.extra.z > 0.5 {
         // Fondo: del horizonte (a la altura de la mirada, ~2) a la superficie.
         let h = clamp((in.world_position.y - 2.0) / 45.0, 0.0, 1.0);

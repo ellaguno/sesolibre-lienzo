@@ -24,6 +24,8 @@ pub struct Look {
     pub clear: Color,
     /// Multiplicador de cáusticas (0 = ninguna, 1 = Caribe a mediodía).
     pub caustics: f32,
+    /// El cielo visto desde abajo por la ventana de Snell.
+    pub sky: [f32; 3],
 }
 
 /// Color del horizonte de un agua: donde el suelo se funde con el fondo. Es
@@ -55,6 +57,7 @@ fn raw_look(w: Water) -> Look {
             particles: 0.35,
             clear: Color::srgb(0.012, 0.04, 0.11),
             caustics: 0.35,
+            sky: [0.45, 0.62, 0.72],
         },
         Water::Caribe => Look {
             top: [0.55, 0.90, 0.92],
@@ -66,6 +69,7 @@ fn raw_look(w: Water) -> Look {
             particles: 0.25,
             clear: Color::srgb(0.06, 0.42, 0.55),
             caustics: 1.0,
+            sky: [0.98, 0.99, 1.0],
         },
         Water::Hawai => Look {
             top: [0.20, 0.52, 0.85],
@@ -77,6 +81,7 @@ fn raw_look(w: Water) -> Look {
             particles: 0.30,
             clear: Color::srgb(0.02, 0.10, 0.30),
             caustics: 0.75,
+            sky: [0.80, 0.90, 1.0],
         },
         Water::Cristalina => Look {
             top: [0.72, 0.94, 0.90],
@@ -88,6 +93,7 @@ fn raw_look(w: Water) -> Look {
             particles: 0.18,
             clear: Color::srgb(0.25, 0.60, 0.62),
             caustics: 0.9,
+            sky: [0.96, 0.98, 0.96],
         },
     }
 }
@@ -126,6 +132,9 @@ pub fn apply(
         m.texture = images.add(textures::sand(lk.sand));
         // el suelo se pierde antes en la niebla: a media distancia ya es agua
         m.params.x = lk.fog_density * 1.9;
+    }
+    if let Some(mut m) = materials.get_mut(&common.surface) {
+        m.color = Color::srgb(lk.sky[0], lk.sky[1], lk.sky[2]).into();
     }
     if let Some(mut m) = materials.get_mut(&common.ray) {
         m.color = Color::srgba(1.0, 1.0, 1.0, lk.rays).into();

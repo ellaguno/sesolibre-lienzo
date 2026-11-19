@@ -467,7 +467,7 @@ Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente
 4. **Familia Color** (manchas de acuarela) ✅ y **familia Luz** (faroles, haz, arcoíris) ✅,
    con su música.
 4b. ✅ **Relieve**: mapa de alturas esculpible y elementos que se asientan en él.
-5. **Refracción y superficie** (post-proceso).
+5. ✅ **Refracción y superficie**: superficie con ventana de Snell y oleaje; refracción con la pila de efectos de Bevy (lente que respira, aberración leve, viñeta). Los rayos nacen en la superficie.
 6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
 7. Más elementos (sprites nuevos con Gemini, mismo estilo).
 
