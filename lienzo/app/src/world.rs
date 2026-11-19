@@ -56,34 +56,42 @@ pub struct Common {
 }
 
 pub fn setup(
+    flags: Res<crate::DebugFlags>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<CardMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    commands.spawn((
+    let mut cam = commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 3.0, 15.0).looking_at(Vec3::new(0.0, 2.2, 0.0), Vec3::Y),
         Tonemapping::AcesFitted,
-        // refracción: la imagen entera ondula despacio (ver `refraction`)
-        bevy::post_process::effect_stack::LensDistortion {
-            intensity: 0.0,
-            ..default()
-        },
-        bevy::post_process::effect_stack::ChromaticAberration {
-            intensity: 0.004,
-            ..default()
-        },
-        bevy::post_process::effect_stack::Vignette {
-            intensity: 0.25,
-            ..default()
-        },
-        Bloom {
-            intensity: 0.18,
-            ..Bloom::NATURAL
-        },
         Orbit::default(),
     ));
+    if !flags.has("no_bloom") {
+        cam.insert(Bloom {
+            intensity: 0.18,
+            ..Bloom::NATURAL
+        });
+    }
+    // refracción: la imagen entera ondula despacio (ver `refraction`). La pila
+    // de efectos de Bevy pinta negro en GLES (Mali), así que en Android no va.
+    if !cfg!(target_os = "android") {
+        cam.insert((
+            bevy::post_process::effect_stack::LensDistortion {
+                intensity: 0.0,
+                ..default()
+            },
+            bevy::post_process::effect_stack::ChromaticAberration {
+                intensity: 0.004,
+                ..default()
+            },
+            bevy::post_process::effect_stack::Vignette {
+                intensity: 0.25,
+                ..default()
+            },
+        ));
+    }
     let lk = crate::water::look(lienzo_core::Water::Abismo);
     commands.insert_resource(ClearColor(lk.clear));
 
@@ -95,13 +103,15 @@ pub fn setup(
         images.add(textures::soft_dot()),
         Color::srgb(lk.top[0], lk.top[1], lk.top[2]),
     ));
-    commands.spawn((
+    if !flags.has("no_backdrop") {
+        commands.spawn((
         Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop.clone()),
         // centrada a la altura de la mirada: el horizonte del fondo coincide
         // con el borde del suelo, y la niebla los funde.
         Transform::from_xyz(0.0, 2.0, 0.0),
-    ));
+        ));
+    }
 
     // suelo
     let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
@@ -110,18 +120,28 @@ pub fn setup(
         images.add(textures::soft_dot()),
         Color::srgb(lk.sky[0], lk.sky[1], lk.sky[2]),
     ));
-    commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
-        MeshMaterial3d(surface.clone()),
-        Transform::from_xyz(0.0, HEIGHT, 0.0),
-    ));
+    if !flags.has("no_surface") {
+        commands.spawn((
+            Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
+            MeshMaterial3d(surface.clone()),
+            Transform::from_xyz(0.0, HEIGHT, 0.0),
+        ));
+    }
     // el suelo: una sola malla esculpible que llega hasta el fondo
-    commands.spawn((
-        Mesh3d(meshes.add(crate::terrain::build_mesh(&lienzo_core::Scene::new(0)))),
-        MeshMaterial3d(sand.clone()),
-        Transform::IDENTITY,
-        crate::terrain::Terrain,
-    ));
+    if flags.has("no_terrain") {
+        commands.spawn((
+            Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
+            MeshMaterial3d(sand.clone()),
+            Transform::from_xyz(0.0, 0.0, -6.0),
+        ));
+    } else {
+        commands.spawn((
+            Mesh3d(meshes.add(crate::terrain::build_mesh(&lienzo_core::Scene::new(0)))),
+            MeshMaterial3d(sand.clone()),
+            Transform::IDENTITY,
+            crate::terrain::Terrain,
+        ));
+    }
 
     // rayos de luz desde la superficie
     let ray_tex = images.add(textures::ray());
@@ -131,7 +151,7 @@ pub fn setup(
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
         (seed >> 8) as f32 / (1u32 << 24) as f32
     };
-    for _ in 0..9 {
+    for _ in 0..(if flags.has("no_rays") { 0 } else { 9 }) {
         let x = -9.0 + 18.0 * rnd();
         let z = -12.0 + 8.0 * rnd();
         let w = 1.2 + 2.2 * rnd();
@@ -205,7 +225,7 @@ pub fn refraction(
     >,
 ) {
     let Ok((tf, mut lens, mut chroma)) = q.single_mut() else {
-        return;
+        return; // en Android no hay efectos
     };
     let t = time.elapsed_secs();
     let clarity = 1.0 - crate::water::look(obra.scene.water).fog_density / 0.05;

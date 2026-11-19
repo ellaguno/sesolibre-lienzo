@@ -118,12 +118,19 @@ impl CardMaterial {
     }
 }
 
+/// Con la bandera de depuración `min_shader` se usa la variante mínima
+/// (`card_min.wesl`), para bisecar problemas de GLES en el teléfono.
+pub static MIN_SHADER: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
 impl Material for CardMaterial {
     fn fragment_shader() -> ShaderRef {
-        ShaderRef::Path(
-            AssetPath::from_path_buf(bevy::asset::embedded_path!("card.wesl"))
-                .with_source("embedded"),
-        )
+        let minimal = *MIN_SHADER.get().unwrap_or(&false);
+        let path = if minimal {
+            bevy::asset::embedded_path!("card_min.wesl")
+        } else {
+            bevy::asset::embedded_path!("card.wesl")
+        };
+        ShaderRef::Path(AssetPath::from_path_buf(path).with_source("embedded"))
     }
 
     fn alpha_mode(&self) -> AlphaMode {

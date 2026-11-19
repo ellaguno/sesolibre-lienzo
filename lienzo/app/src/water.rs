@@ -105,6 +105,7 @@ pub struct Applied(pub Option<Water>);
 /// Si la obra cambió de agua, retiñe: fondo, arena, niebla de todos los
 /// materiales, rayos, partículas y color de limpieza.
 pub fn apply(
+    flags: Res<crate::DebugFlags>,
     obra: Res<Obra>,
     mut applied: ResMut<Applied>,
     common: Res<Common>,
@@ -123,7 +124,7 @@ pub fn apply(
     for (_, m) in materials.iter_mut() {
         m.fog_color = fog;
         m.params.x = lk.fog_density;
-        m.extra.x = lk.caustics;
+        m.extra.x = if flags.has("no_caustics") { 0.0 } else { lk.caustics };
     }
     if let Some(mut m) = materials.get_mut(&common.backdrop) {
         m.color = Color::srgb(lk.top[0], lk.top[1], lk.top[2]).into();

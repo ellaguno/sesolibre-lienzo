@@ -15,6 +15,7 @@ bevy = { version = "0.20", default-features = false, features = [
     "bevy_asset", "bevy_log", "bevy_post_process", "bevy_ui", "bevy_ui_render", "bevy_text", "default_font", "bevy_picking", "ui_picking", "png", "x11", "wayland",
     "multi_threaded", "std", "async_executor",
 ] }
+bevy_render = { version = "0.20", features = ["gles"] }
 cpal = "0.18"
 anyhow = "1"
 

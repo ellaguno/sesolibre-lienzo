@@ -542,6 +542,7 @@ pub fn spawn_stroke(
 }
 
 pub fn spawn_scene(
+    flags: Res<crate::DebugFlags>,
     mut commands: Commands,
     common: Res<Common>,
     mut mats: ResMut<SpriteMaterials>,
@@ -549,6 +550,9 @@ pub fn spawn_scene(
     mut materials: ResMut<Assets<CardMaterial>>,
     scene: Res<crate::Obra>,
 ) {
+    if flags.has("no_cards") {
+        return;
+    }
     for (i, s) in scene.scene.strokes.iter().enumerate() {
         spawn_stroke(
             &mut commands,

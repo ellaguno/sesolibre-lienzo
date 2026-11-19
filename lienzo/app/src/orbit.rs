@@ -112,20 +112,29 @@ pub fn control(
     o.pitch += (pitch_goal - o.pitch) * k;
     let t_now = o.target;
     o.target = t_now + (target_goal - t_now) * k;
-    let dist_now = tf.translation.distance(o.target);
-    let dist = dist_now + (dist_goal - dist_now) * k;
-
-    // En vertical (teléfono) la cámara retrocede para que quepa el ancho.
+    // En vertical (teléfono) la cámara retrocede para que quepa el ancho. El
+    // factor se aplica al OBJETIVO, nunca a la distancia medida: si se
+    // aplicara a la medida, se acumularía cada fotograma y la cámara se iría
+    // al infinito (pasó en Android).
     let portrait = windows
         .single()
-        .map(|w| (w.height() / w.width()).max(1.0))
+        .ok()
+        .filter(|w| w.width() > 1.0 && w.height() > 1.0)
+        .map(|w| (w.height() / w.width()).clamp(1.0, 3.0))
         .unwrap_or(1.0);
-    let dist = dist * (1.0 + 0.55 * (portrait - 1.0));
+    let dist_goal = dist_goal * (1.0 + 0.55 * (portrait - 1.0));
+    let mut dist_now = tf.translation.distance(o.target);
+    if !dist_now.is_finite() || dist_now < 0.1 || dist_now > 200.0 {
+        dist_now = dist_goal;
+    }
+    let dist = dist_now + (dist_goal - dist_now) * k;
     let pos = o.target
         + Vec3::new(
             o.yaw.sin() * o.pitch.cos(),
             o.pitch.sin(),
             o.yaw.cos() * o.pitch.cos(),
         ) * dist;
-    *tf = Transform::from_translation(pos).looking_at(o.target, Vec3::Y);
+    if pos.is_finite() && (pos - o.target).length() > 0.01 {
+        *tf = Transform::from_translation(pos).looking_at(o.target, Vec3::Y);
+    }
 }

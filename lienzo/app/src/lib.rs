@@ -52,6 +52,39 @@ impl lienzo_core::AssetSource for ApkSource {
     }
 }
 
+/// Interruptores de depuración para bisecar en el teléfono sin recompilar.
+/// Android: `<external files>/debug.txt`; escritorio: `LIENZO_DEBUG`. Una
+/// palabra por línea: no_terrain, no_surface, no_caustics, no_backdrop,
+/// no_bloom, no_rays, no_cards.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct DebugFlags(pub std::collections::HashSet<String>);
+
+impl DebugFlags {
+    pub fn has(&self, k: &str) -> bool {
+        self.0.contains(k)
+    }
+}
+
+fn debug_flags() -> DebugFlags {
+    let mut text = std::env::var("LIENZO_DEBUG").unwrap_or_default();
+    #[cfg(target_os = "android")]
+    if let Some(p) = bevy::android::ANDROID_APP
+        .get()
+        .and_then(|a| a.external_data_path())
+    {
+        if let Ok(t) = std::fs::read_to_string(p.join("debug.txt")) {
+            text.push('\n');
+            text.push_str(&t);
+        }
+    }
+    DebugFlags(
+        text.split(|c: char| c.is_whitespace() || c == ',')
+            .filter(|w| !w.is_empty())
+            .map(|w| w.to_string())
+            .collect(),
+    )
+}
+
 /// Raíz del proyecto: la carpeta que contiene `assets/manifest.toml`.
 #[cfg(not(target_os = "android"))]
 fn project_root() -> PathBuf {
@@ -72,7 +105,9 @@ fn project_root() -> PathBuf {
 fn render_plugin() -> bevy::render::RenderPlugin {
     use bevy::render::settings::{Backends, WgpuLimits, WgpuSettings};
     let mut settings = WgpuSettings::default();
-    if cfg!(target_os = "android") {
+    // LIENZO_GLES=1 reproduce en escritorio el camino de Android (GL + límites)
+    let gles = cfg!(target_os = "android") || std::env::var("LIENZO_GLES").is_ok();
+    if gles {
         settings.backends = Some(Backends::GL);
         // Sin storage buffers (GLES no los ofrece en el vértice): Bevy pasa a
         // uniformes, como en WebGL2. Bevy solo lo hace solo en wasm, y con la
@@ -90,10 +125,12 @@ fn render_plugin() -> bevy::render::RenderPlugin {
 /// Hilos de Bevy. En el teléfono, los hilos del pool de cómputo giran en
 /// espera activa y gastan CPU sin trabajo que hacer; con uno por pool basta
 /// para esta app (la mezcla de audio va en su propio hilo, fuera de Bevy).
-fn task_pools() -> bevy::app::TaskPoolPlugin {
+fn task_pools(flags: &DebugFlags) -> bevy::app::TaskPoolPlugin {
     use bevy::app::{TaskPoolOptions, TaskPoolPlugin};
     let mut o = TaskPoolOptions::default();
-    if cfg!(target_os = "android") {
+    // Sospecha: con un solo hilo por pool, en GLES no se dibuja nada. Solo con
+    // la bandera `pools_min` se limita.
+    if flags.has("pools_min") {
         o.min_total_threads = 1;
         o.max_total_threads = 3;
         for pool in [&mut o.io, &mut o.async_compute, &mut o.compute] {
@@ -143,6 +180,11 @@ pub fn run() -> anyhow::Result<()> {
 
     let link = audio::start(bank.clone(), scene.clone())?;
 
+    let flags = debug_flags();
+    let _ = material::MIN_SHADER.set(flags.has("min_shader"));
+    if !flags.0.is_empty() {
+        eprintln!("lienzo: depuración {:?}", flags.0);
+    }
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
@@ -156,9 +198,10 @@ pub fn run() -> anyhow::Result<()> {
             })
             .set(asset_plugin)
             .set(render_plugin())
-            .set(task_pools()),
+            .set(task_pools(&flags)),
     );
     bevy::asset::embedded_asset!(app, "card.wesl");
+    bevy::asset::embedded_asset!(app, "card_min.wesl");
     // Obra contemplativa, no juego: ~30 fps en el teléfono y 60 en escritorio
     // bastan, y responde al instante a cualquier gesto. En segundo plano, casi
     // nada. Esto es lo que más batería y CPU ahorra.
@@ -177,6 +220,7 @@ pub fn run() -> anyhow::Result<()> {
             new_stroke: None,
             path,
         })
+        .insert_resource(flags)
         .init_resource::<draw::DrawState>()
         .init_resource::<input::Pointer>()
         .init_resource::<water::Applied>()
