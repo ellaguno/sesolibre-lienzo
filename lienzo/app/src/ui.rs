@@ -171,11 +171,13 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
         });
     commands.spawn((
         Hint,
+        // la ayuda no intercepta toques: tapaba la fila de aguas en el teléfono
+        bevy::picking::Pickable::IGNORE,
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(14.0),
             top: Val::Px(if cfg!(target_os = "android") {
-                56.0
+                104.0
             } else {
                 12.0
             }),
