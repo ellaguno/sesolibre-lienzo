@@ -100,7 +100,7 @@ pub fn swim(
     let floor = crate::terrain::floor_y(&obra.scene, target.x, target.z);
     target.y = target.y.max(floor + 1.7);
     // la mirada va por delante, casi a nivel, apenas hacia la obra
-    ahead.y = target.y - 0.12;
+    ahead.y = target.y - 0.45;
     // suavidad: la cámara persigue la ruta, la mirada va un poco por delante
     let k = 1.0 - (-2.5 * dt).exp();
     let (p0, l0) = (dive.pos, dive.look);

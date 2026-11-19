@@ -46,9 +46,9 @@ pub fn auto(scene: &Scene) -> Vec<Point> {
     pts.iter()
         .map(|(_, c)| {
             let r = (c.x * c.x + c.z * c.z).sqrt().max(0.2);
-            let k = (r + 0.35).min(0.95) / r;
-            // a media agua, algo por encima de lo que se mira
-            Point::new(c.x * k, (c.y * 0.6 + 0.12).clamp(0.2, 0.55), c.z * k)
+            // bastante por fuera y por encima: se mira la obra, no se atraviesa
+            let k = (r + 0.55).min(0.95) / r;
+            Point::new(c.x * k, (c.y * 0.5 + 0.38).clamp(0.4, 0.7), c.z * k)
         })
         .collect()
 }
