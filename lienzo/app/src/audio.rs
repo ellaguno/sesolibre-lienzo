@@ -67,7 +67,13 @@ pub fn start(bank: Arc<SampleBank>, scene: Scene) -> anyhow::Result<AudioLink> {
                 Ok(it) => it
                     .filter(|c| c.channels() == 2 && c.sample_format() == cpal::SampleFormat::F32)
                     .find(|c| c.min_sample_rate() <= SR && SR <= c.max_sample_rate())
-                    .map(|c| c.with_sample_rate(SR).config()),
+                    .map(|c| {
+                        let mut cfg = c.with_sample_rate(SR).config();
+                        // 2048 muestras (43 ms): latencia sobrada para una obra
+                        // contemplativa, y margen contra cortes.
+                        cfg.buffer_size = cpal::BufferSize::Fixed(2048);
+                        cfg
+                    }),
                 Err(_) => None,
             };
             let Some(config) = cfg else {

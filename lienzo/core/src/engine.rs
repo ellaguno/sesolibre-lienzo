@@ -143,6 +143,7 @@ impl Default for EngineOptions {
 
 /// Un ambiente en bucle: cuándo toca programar la siguiente pasada.
 struct AmbienceLoop {
+    name: &'static str,
     pieces: Vec<(Arc<Pcm>, f32, f32)>, // (buffer ya remuestreado, ganancia, paneo)
     next_t: Vec<f64>,
     gain: f32,
@@ -209,13 +210,18 @@ impl Engine {
         self.horizon = 0.0;
         self.events.clear();
         self.next_event = 0;
-        self.ambiences.clear();
         let now = self.now_seconds();
         self.extend(now + 120.0);
-        // ambiente: se programa como bucles
+        // Ambiente: bucles que se construyen UNA vez (remuestrear 60 s de agua
+        // pesa, y esto corre en el hilo de audio). Al cambiar la obra solo
+        // cambia su ganancia; el agua no se reinicia con cada trazo.
         let all = compose(&self.scene, 1.0);
         for ev in all {
             if let Event::Ambience { name, gain } = ev {
+                if let Some(existing) = self.ambiences.iter_mut().find(|a| a.name == name) {
+                    existing.gain = gain;
+                    continue;
+                }
                 if let Some(src) = self.bank.ambience(name) {
                     let mut pieces = vec![];
                     let mut next_t = vec![];
@@ -225,6 +231,7 @@ impl Engine {
                         next_t.push(now + offset);
                     }
                     self.ambiences.push(AmbienceLoop {
+                        name,
                         pieces,
                         next_t,
                         gain,

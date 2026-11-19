@@ -143,7 +143,9 @@ pub fn run() -> anyhow::Result<()> {
         focused_mode: bevy::winit::UpdateMode::reactive(std::time::Duration::from_millis(
             if cfg!(target_os = "android") { 33 } else { 16 },
         )),
-        unfocused_mode: bevy::winit::UpdateMode::reactive_low_power(std::time::Duration::from_millis(250)),
+        unfocused_mode: bevy::winit::UpdateMode::reactive_low_power(
+            std::time::Duration::from_millis(250),
+        ),
     });
     app.add_plugins(bevy::pbr::MaterialPlugin::<material::CardMaterial>::default())
         .insert_resource(Obra {
