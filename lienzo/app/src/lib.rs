@@ -84,6 +84,25 @@ fn render_plugin() -> bevy::render::RenderPlugin {
     }
 }
 
+/// Hilos de Bevy. En el teléfono, los hilos del pool de cómputo giran en
+/// espera activa y gastan CPU sin trabajo que hacer; con uno por pool basta
+/// para esta app (la mezcla de audio va en su propio hilo, fuera de Bevy).
+fn task_pools() -> bevy::app::TaskPoolPlugin {
+    use bevy::app::{TaskPoolOptions, TaskPoolPlugin};
+    let mut o = TaskPoolOptions::default();
+    if cfg!(target_os = "android") {
+        o.min_total_threads = 1;
+        o.max_total_threads = 3;
+        for pool in [&mut o.io, &mut o.async_compute, &mut o.compute] {
+            pool.min_threads = 1;
+            pool.max_threads = 1;
+        }
+    }
+    TaskPoolPlugin {
+        task_pool_options: o,
+    }
+}
+
 #[bevy_main]
 pub fn main() {
     if let Err(e) = run() {
