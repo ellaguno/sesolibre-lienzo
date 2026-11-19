@@ -68,7 +68,8 @@ pub fn setup(
         Tonemapping::AcesFitted,
         Orbit::default(),
     ));
-    if !flags.has("no_bloom") {
+    // en GLES (Mali) el bloom oscurece la imagen a la mitad: se omite en Android
+    if !flags.has("no_bloom") && (!cfg!(target_os = "android") || flags.has("bloom")) {
         cam.insert(Bloom {
             intensity: 0.18,
             ..Bloom::NATURAL
