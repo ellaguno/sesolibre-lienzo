@@ -48,7 +48,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let f = 1.0 - exp(-d * d);
         if material.params.z > 0.5 {
             // la luz aditiva no se tiñe de niebla: se apaga con la distancia
-            c = vec4<f32>(c.rgb * (1.0 - f), c.a);
+            c = vec4<f32>(c.rgb * sqrt(1.0 - f), c.a);
         } else {
             c = vec4<f32>(mix(c.rgb, material.fog_color.rgb, f), c.a);
         }
