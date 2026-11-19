@@ -55,8 +55,11 @@ pub fn backdrop(top: [f32; 3], bottom: [f32; 3]) -> Image {
     // En la esfera de Bevy v crece hacia ARRIBA, así que se invierte.
     make(16, 256, move |_, v| {
         let v = 1.0 - v;
-        let t = ((v - 0.12) / 0.70).clamp(0.0, 1.0);
-        let t = t * t * (3.0 - 2.0 * t);
+        // Del polo (superficie) al horizonte: degradado. Por debajo del
+        // horizonte, el color del horizonte, que es el de la niebla: el suelo
+        // se funde con el fondo sin banda.
+        let u = ((v - 0.10) / 0.40).clamp(0.0, 1.0);
+        let t = (u * u * (3.0 - 2.0 * u)) * 0.52;
         [
             top[0] * (1.0 - t) + bottom[0] * t,
             top[1] * (1.0 - t) + bottom[1] * t,
