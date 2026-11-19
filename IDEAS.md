@@ -20,6 +20,9 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 - Humanización de micro-tiempo ahora que el reloj es preciso. — 2026-11-18
 
 ## Visual
+- (v2, en diseño §11) Aguas Caribe/Hawái/cristalina, cáusticas, refracción, arcoíris, vista cenital de dibujo, ruta de buceo. — 2026-11-19, Eduardo
+- Buzo como elemento dibujable que sigue la ruta de buceo (el autor dentro de su obra). — 2026-11-19
+- Superficie vista desde arriba en la vista cenital: el lienzo es la superficie del mar y se dibuja "a través" del agua. — 2026-11-19
 - Un segundo estilo de arte "realista" (no infantil) como alternativa al teatro de papel; mismos pinceles, otro set de sprites. — 2026-11-18, comentario de Eduardo al cerrar la Fase 0
 - Estilizador visual con IA fuera de línea usando el depth map de la escena como estructura. — 2026-11-18, Vivero fase 3
 - Modo "fotografía": encuadre, profundidad de campo y filtros para la postal. — 2026-11-18

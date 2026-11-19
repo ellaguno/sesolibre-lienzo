@@ -338,3 +338,133 @@ Nadie escuchó el intento anterior mientras se construía y se notó. Aquí:
   de suelo/agua más la órbita.
 - Cuántas voces simultáneas aguanta la mezcla antes de embarrarse (se mide en Fase 1).
 - Familia de instrumentos definitiva (se decide oyendo en Fase 0).
+
+---
+
+## 11. Versión 2 — luz, agua y dos vistas
+
+*19 de noviembre de 2026. Tras la validación técnica en Android, Eduardo pidió más inmersión
+sin perder el teatro de papel. Esto redefine la experiencia; el motor musical y el core se
+quedan.*
+
+### 11.1 Qué cambia y qué no
+
+- **No cambia:** cada trazo es a la vez imagen y frase musical; el estilo de libro infantil;
+  el motor determinista; la galería; que la cámara sea la posición de escucha.
+- **Cambia:** hay **dos vistas** (dibujar desde arriba, bucear en 3D); los pinceles se
+  organizan en **cinco familias** (elementos, color, luz, agua, ruta); el agua tiene
+  **carácter propio** (del abismo índigo al Caribe cristalino); y la **inmersión** se
+  construye con luz procedural (cáusticas, rayos, arcoíris, refracción, superficie), con
+  *abyssal-garden* como referencia de técnica.
+
+### 11.2 Las dos vistas
+
+| | **Vista de dibujo** (lienzo) | **Vista de buceo** (escena) |
+|---|---|---|
+| Cámara | Cenital/isométrica, ortográfica, desde arriba. El suelo es el papel. | Perspectiva, dentro del agua. Órbita acotada o nado por la ruta. |
+| Qué se hace | Dibujar: elementos, color, luz, agua, ruta. | Mirar, escuchar, tocar elementos para que actúen. Seguir la ruta de buceo. |
+| Profundidad | Una **capa de altura** elegible (fondo / media agua / cerca de la superficie) con un deslizador; lo dibujado cae en esa capa. | Se ve el volumen completo. |
+| Música | Suena lo que se dibuja; la escucha es "desde arriba", de conjunto. | La posición en la ruta es la posición de escucha: lo cercano presente, lo lejano velado. |
+
+Un gesto (botón o pinza extrema) pasa de una a otra con una transición de cámara continua:
+la vista cenital **se inclina y desciende** hasta meterse en el agua. Es la misma escena,
+no dos pantallas.
+
+### 11.3 Cinco familias de pinceles
+
+1. **Elementos** (lo que ya existe): kelp, coral, anémona, cardumen, medusa, burbujas,
+   ballena, barco… Siguen siendo sprites de papel sobre trazo o toque. Hay que ampliar el
+   catálogo (tortuga, manta, pulpo, caballito de mar, estrella, roca, ánfora, buzo).
+2. **Color**: trazos libres de acuarela que se quedan en el agua o sobre el fondo como
+   manchas de papel pintado (nubes de plancton, bancos de arena rosada, sombras). Se
+   renderizan como cintas texturizadas, con el mismo grano de papel que los sprites.
+   *Musicalmente* son **colchón**: el tono define el modo y la textura (cálidos = cuerdas
+   y coro; fríos = pads de cristal), el tamaño su peso en la mezcla.
+3. **Luz**: fuentes de luz de color que se colocan como toques o trazos: faroles de
+   bioluminiscencia, un haz que entra por la superficie, un arcoíris sutil en el agua,
+   luciérnagas marinas. *Musicalmente* son lo **agudo y brillante**: celesta, arpa en
+   armónicos, campanas, y su intensidad modula el brillo del máster.
+4. **Agua**: no se dibuja; se elige. Ver 11.4.
+5. **Ruta**: un trazo especial en la vista cenital, la **ruta de buceo** (11.6).
+
+### 11.4 Las aguas
+
+Un preset de agua define color de niebla, color de superficie y fondo, claridad (alcance
+de la niebla), intensidad de cáusticas y rayos, y **el modo musical**. Los primeros cuatro:
+
+| Agua | Luz y color | Música |
+|---|---|---|
+| **Abismo** (actual) | Índigo, niebla densa, rayos lejanos, bioluminiscencia | Re pentatónica, tempo lento, reverb larga |
+| **Caribe** | Turquesa claro, arena blanca, cáusticas fuertes, mucha luz | Mayor luminoso, más tempo, arpa y marimba al frente |
+| **Hawái** | Azul cobalto, rocas volcánicas oscuras, rayos nítidos | Pentatónica con color lidio, flauta |
+| **Cristalina** (cenote/laguna) | Casi transparente, verde-azul, superficie muy presente | Modo claro, pocas voces, mucho aire |
+
+El agua se elige al crear la obra y se puede cambiar: la misma obra "amanece" en otra agua.
+Añadir un agua es una entrada de datos (colores, parámetros, escala), no código.
+
+### 11.5 Inmersión: la luz procedural
+
+Todo esto es trabajo de shader y de partículas, no de sprites, y por eso escala a
+cualquier agua. Referencia técnica: *abyssal-garden* (rayos, niebla por profundidad,
+kelp instanciado, superficie, paleta de agua por profundidad).
+
+- **Cáusticas** animadas sobre el suelo y sobre las cartas: textura de cáusticas que se
+  desplaza y se suma según la claridad del agua.
+- **Rayos de luz** volumétricos desde la superficie, que se mueven con lentitud.
+- **Superficie** vista desde abajo: ondulación, reflejo (efecto Snell: el mundo exterior
+  cabe en un círculo) cuando la cámara mira arriba.
+- **Refracción**: distorsión suave de toda la imagen con un campo de ondas lento, más
+  fuerte cerca de la superficie y en aguas claras. Es un post-proceso de pantalla completa.
+- **Arcoíris**: un arco tenue de color espectral, aditivo, que aparece donde hay un haz de
+  luz y agua clara. Se puede dibujar (familia Luz) o dejar que el agua lo ponga.
+- **Partículas**: sedimento, plancton bioluminiscente, burbujas; su color sigue al agua.
+
+Restricción conocida: en Android vamos sobre GLES con material propio; cada efecto se
+escribe en nuestro shader (`card.wesl` y sucesores), sin depender del PBR de Bevy. Es más
+trabajo, pero es lo que ya funciona en Mali.
+
+### 11.6 La ruta de buceo
+
+En la vista cenital se traza un camino (familia Ruta). En la vista de buceo, **"bucear"**
+recorre ese camino con la cámara a velocidad de nado, mirando hacia donde avanza con
+suavidad, pasando entre lo dibujado. Como la cámara es la posición de escucha, la ruta
+es también una **interpretación**: la pieza suena distinta según por dónde se nada. La
+ruta se guarda con la obra; una obra puede tener varias. Al terminar, la cámara queda
+libre en órbita.
+
+El buceo es además el **vídeo natural** para compartir: ruta + obra = un recorrido
+renderizable con su audio.
+
+### 11.7 Qué le pasa a la música
+
+- Nada del core cambia de contrato: la escena sigue siendo trazos; solo hay más familias
+  de pincel, y cada una tiene instrumento, registro y papel en la mezcla.
+- El **agua** aporta escala, tempo, reverb y balance; es el "momento del día" de Vivero
+  reencarnado, pero con identidad sonora y visual.
+- La **ruta** mueve el punto de escucha de forma continua (paneo, filtro, nivel por
+  distancia a cada elemento); ya existe en el motor (`depth`, `pan`), solo que ahora lo
+  gobierna la cámara en movimiento.
+
+### 11.8 Orden de construcción propuesto
+
+Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente.
+
+1. **Aguas**: el preset como datos (colores, niebla, claridad, modo musical) y el cambio en
+   caliente. Caribe y Abismo primero. *Es lo que más cambia la sensación por menos código.*
+2. **Luz procedural básica**: cáusticas animadas en suelo y cartas, rayos que se mueven,
+   partículas con el color del agua.
+3. **Vista cenital de dibujo** con capa de altura, y la transición cenital ↔ buceo.
+4. **Familia Color** (cintas de acuarela) y **familia Luz** (faroles, haz, arcoíris), con su
+   música.
+5. **Refracción y superficie** (post-proceso).
+6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
+7. Más elementos (sprites nuevos con Gemini, mismo estilo).
+
+### 11.9 Decisiones que faltan
+
+- ¿La vista de dibujo es **cenital pura** (como un mapa) o **isométrica** (se ve algo de
+  altura)? Propongo cenital con ligera inclinación (~25°) para que los elementos se lean.
+- ¿La capa de altura al dibujar es un **deslizador** o **tres botones** (fondo, agua,
+  superficie)? Propongo tres botones; es más claro con el dedo.
+- ¿El agua se elige **al crear** la obra o se puede **cambiar siempre**? Propongo siempre.
+- ¿La ruta de buceo se reproduce **una vez** o **en bucle** durante la contemplación?
