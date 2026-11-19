@@ -464,9 +464,9 @@ Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente
 2. **Luz procedural básica**: cáusticas animadas en suelo y cartas, rayos que se mueven,
    partículas con el color del agua.
 3. **Vista cenital de dibujo** con capa de altura, y la transición cenital ↔ buceo. ✅
-4. **Familia Color** (manchas de acuarela) ✅ y **familia Luz** (faroles, haz, arcoíris),
+4. **Familia Color** (manchas de acuarela) ✅ y **familia Luz** (faroles, haz, arcoíris) ✅,
    con su música.
-4b. **Relieve**: mapa de alturas esculpible y elementos que se asientan en él.
+4b. ✅ **Relieve**: mapa de alturas esculpible y elementos que se asientan en él.
 5. **Refracción y superficie** (post-proceso).
 6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
 7. Más elementos (sprites nuevos con Gemini, mismo estilo).

@@ -7,6 +7,7 @@ mod gallery;
 mod input;
 mod material;
 mod orbit;
+mod terrain;
 mod textures;
 mod ui;
 mod water;
@@ -178,6 +179,7 @@ pub fn run() -> anyhow::Result<()> {
         .init_resource::<draw::DrawState>()
         .init_resource::<input::Pointer>()
         .init_resource::<water::Applied>()
+        .init_resource::<terrain::Built>()
         .init_resource::<gallery::Gallery>()
         .init_resource::<gallery::Pending>()
         .init_resource::<gallery::Exporting>()
@@ -209,6 +211,8 @@ pub fn run() -> anyhow::Result<()> {
                 draw::touch,
                 ui::refresh,
                 water::apply,
+                terrain::update,
+                cards::resettle,
                 orbit::control,
                 world::drift_particles,
                 world::sway_rays,

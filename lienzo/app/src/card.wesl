@@ -36,6 +36,15 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         return vec4<f32>(mix(material.fog_color.rgb, material.color.rgb, k), 1.0);
     }
     var c = material.color * textureSample(card_texture, card_sampler, in.uv);
+    if material.extra.w > 0.5 {
+        // relieve: las laderas que miran a la luz (arriba y un poco al frente)
+        // se aclaran; las que se alejan, se oscurecen
+        let n = normalize(in.world_normal);
+        let lit = clamp(dot(n, normalize(vec3<f32>(0.25, 1.0, 0.35))), 0.0, 1.0);
+        // y las fosas se oscurecen, las crestas se aclaran
+        let depth = clamp(in.world_position.y / 1.6, -1.0, 1.0);
+        c = vec4<f32>(c.rgb * (0.55 + 0.55 * lit) * (1.0 + 0.4 * depth), c.a);
+    }
     let caustic_strength = material.params.w * material.extra.x;
     if caustic_strength > 0.001 {
         // más luz cerca de la superficie (y alta), casi nada en el abismo

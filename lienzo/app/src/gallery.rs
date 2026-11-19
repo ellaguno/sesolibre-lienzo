@@ -153,7 +153,7 @@ fn replace_scene(
         commands.entity(e).despawn();
     }
     for (i, s) in scene.strokes.iter().enumerate() {
-        cards::spawn_stroke(commands, common, mats, assets, materials, s, i);
+        cards::spawn_stroke(commands, common, mats, assets, materials, &scene, s, i);
     }
     obra.scene = scene;
     obra.path = path;

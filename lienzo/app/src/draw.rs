@@ -116,6 +116,8 @@ pub fn brush_name(b: Brush) -> &'static str {
         Brush::Farol => "Farol",
         Brush::Haz => "Haz de luz",
         Brush::Arcoiris => "Arcoíris",
+        Brush::Elevar => "Elevar",
+        Brush::Hundir => "Hundir",
     }
 }
 
@@ -337,6 +339,7 @@ pub fn draw(
                 &mut mats,
                 &assets,
                 &mut materials,
+                &obra.scene,
                 &stroke,
                 index,
             );

@@ -68,9 +68,12 @@ impl CardMaterial {
         Self::with_caustics(texture, Color::WHITE, AlphaMode::Blend, true, 0.35)
     }
 
-    /// Opaco con niebla y cáusticas marcadas (suelo).
+    /// Opaco con niebla y cáusticas marcadas (suelo); se sombrea por la
+    /// pendiente (extra.w) para que el relieve se lea.
     pub fn opaque(texture: Handle<Image>) -> Self {
-        Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.9)
+        let mut m = Self::with_caustics(texture, Color::WHITE, AlphaMode::Opaque, true, 0.9);
+        m.extra.w = 1.0;
+        m
     }
 
     /// El fondo: degradado por altura calculado en el shader. `color` es el

@@ -12,6 +12,7 @@ pub mod motif;
 pub mod render;
 pub mod rng;
 pub mod scene;
+pub mod terrain;
 pub mod theory;
 pub mod variation;
 

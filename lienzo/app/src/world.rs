@@ -91,10 +91,18 @@ pub fn setup(
 
     // suelo
     let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
+    // el suelo lejano, plano y un pelo más bajo para no pelear con el relieve
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
         MeshMaterial3d(sand.clone()),
-        Transform::from_xyz(0.0, 0.0, -6.0),
+        Transform::from_xyz(0.0, -0.03, -6.0),
+    ));
+    // el relieve esculpible
+    commands.spawn((
+        Mesh3d(meshes.add(crate::terrain::build_mesh(&lienzo_core::Scene::new(0)))),
+        MeshMaterial3d(sand.clone()),
+        Transform::IDENTITY,
+        crate::terrain::Terrain,
     ));
 
     // rayos de luz desde la superficie

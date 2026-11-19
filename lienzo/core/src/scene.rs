@@ -45,10 +45,14 @@ pub enum Brush {
     Haz,
     /// Familia Luz: arcoíris sutil en el agua (trazo).
     Arcoiris,
+    /// Familia Relieve: levanta el fondo (dunas, rocas, acantilados).
+    Elevar,
+    /// Familia Relieve: hunde el fondo (fosas, cuevas).
+    Hundir,
 }
 
 impl Brush {
-    pub const ALL: [Brush; 12] = [
+    pub const ALL: [Brush; 14] = [
         Brush::Kelp,
         Brush::Coral,
         Brush::Anemona,
@@ -61,6 +65,8 @@ impl Brush {
         Brush::Farol,
         Brush::Haz,
         Brush::Arcoiris,
+        Brush::Elevar,
+        Brush::Hundir,
     ];
 
     /// Pinceles que usan el color elegido en la paleta.

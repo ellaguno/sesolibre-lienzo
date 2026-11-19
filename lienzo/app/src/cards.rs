@@ -3,6 +3,7 @@
 
 use crate::material::CardMaterial;
 use crate::world::{to_world, Billboard, Common};
+use crate::Obra;
 use bevy::prelude::*;
 use lienzo_core::{Brush, Stroke};
 use std::collections::HashMap;
@@ -204,11 +205,13 @@ pub fn spawn_stroke(
     mats: &mut SpriteMaterials,
     assets: &AssetServer,
     materials: &mut Assets<CardMaterial>,
+    scene: &lienzo_core::Scene,
     stroke: &Stroke,
     index: usize,
 ) {
     let h = |k: usize| hash01(index, k);
-    let floor = |v: Vec3| Vec3::new(v.x, 0.0, v.z);
+    // los elementos de suelo se asientan sobre el relieve
+    let floor = |v: Vec3| Vec3::new(v.x, crate::terrain::floor_y(scene, v.x, v.z), v.z);
     match stroke.brush {
         Brush::Kelp => {
             for (k, (p, _)) in along(stroke, 0.75).into_iter().enumerate() {
@@ -451,6 +454,33 @@ pub fn spawn_stroke(
                 Billboard,
             ));
         }
+        Brush::Elevar => {
+            // rocas sueltas sobre la cresta, pocas
+            let names = ["roca_a_1", "roca_a_2", "roca_b"];
+            for (k, (p, _)) in along(stroke, 1.1).into_iter().enumerate() {
+                if h(k + 77) < 0.45 {
+                    continue;
+                }
+                let name = names[(h(k) * 3.0) as usize % 3];
+                let jitter = Vec3::new(h(k + 100) - 0.5, 0.0, h(k + 200) - 0.5) * 0.6;
+                let q = p + jitter;
+                spawn_card(
+                    commands,
+                    common,
+                    mats,
+                    assets,
+                    materials,
+                    name,
+                    floor(q) - Vec3::Y * 0.08,
+                    0.5 + 0.5 * h(k + 1),
+                    h(k + 2) > 0.5,
+                    index,
+                    Motion::Still,
+                    0.0,
+                );
+            }
+        }
+        Brush::Hundir => {}
         Brush::Barco => {
             let p = to_world(stroke.points[0]);
             spawn_card(
@@ -486,6 +516,44 @@ pub fn spawn_scene(
             &mut mats,
             &assets,
             &mut materials,
+            &scene.scene,
+            s,
+            i,
+        );
+    }
+}
+
+/// Cuando cambia el relieve, todas las cartas se vuelven a asentar.
+pub fn resettle(
+    obra: Res<Obra>,
+    mut last: Local<u64>,
+    mut commands: Commands,
+    owned: Query<Entity, With<Owned>>,
+    common: Res<Common>,
+    mut mats: ResMut<SpriteMaterials>,
+    assets: Res<AssetServer>,
+    mut materials: ResMut<Assets<CardMaterial>>,
+) {
+    let key = crate::terrain::relief_key(&obra.scene);
+    if *last == key {
+        return;
+    }
+    let first = *last == 0;
+    *last = key;
+    if first {
+        return;
+    }
+    for e in owned.iter() {
+        commands.entity(e).despawn();
+    }
+    for (i, s) in obra.scene.strokes.iter().enumerate() {
+        spawn_stroke(
+            &mut commands,
+            &common,
+            &mut mats,
+            &assets,
+            &mut materials,
+            &obra.scene,
             s,
             i,
         );
