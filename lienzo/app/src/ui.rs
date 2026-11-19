@@ -1,7 +1,7 @@
 //! La paleta: una fila de pinceles abajo y un botón de contemplación. En
 //! contemplación la paleta se esconde; solo queda la obra.
 
-use crate::draw::{brush_name, DrawState};
+use crate::draw::{brush_name, DrawState, Layer, View};
 use crate::Obra;
 use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
@@ -36,6 +36,8 @@ pub struct PaletteRoot;
 pub enum Action {
     Pick(Brush),
     Water(Water),
+    View(View),
+    Layer(Layer),
     Contemplate,
     Undo,
     Gallery,
@@ -54,6 +56,9 @@ const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
 
 #[derive(Component)]
 pub struct WaterRow;
+
+#[derive(Component)]
+pub struct LayerCol;
 
 /// La fuente de toda la interfaz (Noto Sans, OFL).
 #[derive(Resource)]
@@ -87,9 +92,29 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
                 button(row, &font.0, Action::Pick(*b), brush_name(*b));
             }
             spacer(row);
+            button(row, &font.0, Action::View(View::Dibujo), "dibujar");
+            button(row, &font.0, Action::View(View::Buceo), "bucear");
+            spacer(row);
             button(row, &font.0, Action::Undo, "deshacer");
             button(row, &font.0, Action::Gallery, "galería");
             button(row, &font.0, Action::Contemplate, "contemplar");
+        });
+    commands
+        .spawn((
+            LayerCol,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(14.0),
+                top: Val::Percent(40.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(6.0),
+                ..default()
+            },
+        ))
+        .with_children(|col| {
+            for l in [Layer::Superficie, Layer::Agua, Layer::Fondo] {
+                button(col, &font.0, Action::Layer(l), l.name());
+            }
         });
     commands
         .spawn((
@@ -199,6 +224,17 @@ pub fn on_click(
         }
         Action::Contemplate => {
             st.contemplate = !st.contemplate;
+            if st.contemplate {
+                st.view = View::Buceo;
+            }
+            st.title_dirty = true;
+        }
+        Action::View(v) => {
+            st.view = *v;
+            st.title_dirty = true;
+        }
+        Action::Layer(l) => {
+            st.layer = *l;
             st.title_dirty = true;
         }
         // deshacer vive en draw::keys; se simula la tecla
@@ -214,12 +250,15 @@ pub fn refresh(
     gallery: Res<crate::gallery::Gallery>,
     mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor)>,
     mut root: Query<&mut Node, Or<(With<PaletteRoot>, With<WaterRow>)>>,
+    mut layers: Query<&mut Node, (With<LayerCol>, Without<PaletteRoot>, Without<WaterRow>)>,
     mut hint: Query<&mut Text, With<Hint>>,
 ) {
     for (action, mut bg, mut border) in buttons.iter_mut() {
         let on = match action {
             Action::Pick(b) => *b == st.brush,
             Action::Water(w) => *w == obra.scene.water,
+            Action::View(v) => *v == st.view,
+            Action::Layer(l) => *l == st.layer,
             Action::Contemplate => st.contemplate,
             Action::Undo | Action::Gallery => false,
         };
@@ -228,6 +267,13 @@ pub fn refresh(
     }
     for mut node in root.iter_mut() {
         node.display = if st.contemplate {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+    for mut node in layers.iter_mut() {
+        node.display = if st.contemplate || st.view != View::Dibujo {
             Display::None
         } else {
             Display::Flex
@@ -252,14 +298,21 @@ pub fn refresh(
             let ayuda = if cfg!(target_os = "android") {
                 "un dedo dibuja{SEP}dos dedos orbitan"
             } else {
-                "([ ] ajusta){SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galería{SEP}A contemplar"
+                "[ ] capa o plano{SEP}V vista{SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galería{SEP}A contemplar"
             }
             .replace("{SEP}", SEP);
-            format!(
-                "{}{SEP}plano a {:.0} {ayuda}",
-                brush_name(st.brush),
-                st.depth
-            )
+            match st.view {
+                View::Dibujo => format!(
+                    "{}{SEP}capa: {}{SEP}{ayuda}",
+                    brush_name(st.brush),
+                    st.layer.name()
+                ),
+                View::Buceo => format!(
+                    "{}{SEP}plano a {:.0}{SEP}{ayuda}",
+                    brush_name(st.brush),
+                    st.depth
+                ),
+            }
         };
         let s = format!("{titulo}\n{s}\n{}", gallery.status);
         if text.0 != s {

@@ -13,9 +13,47 @@ use bevy::window::PrimaryWindow;
 use lienzo_core::brush::{spec, Attach};
 use lienzo_core::{Brush, Stroke};
 
+/// Las dos vistas (DISEÑO §11.2): dibujar desde arriba, bucear dentro.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum View {
+    Dibujo,
+    Buceo,
+}
+
+/// Capa de altura donde cae lo dibujado en la vista cenital (pinceles de agua).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Layer {
+    Fondo,
+    Agua,
+    Superficie,
+}
+
+impl Layer {
+    pub const ALL: [Layer; 3] = [Layer::Fondo, Layer::Agua, Layer::Superficie];
+
+    /// Altura en coordenadas del core (0 suelo .. 1 superficie).
+    pub fn height(&self) -> f32 {
+        match self {
+            Layer::Fondo => 0.12,
+            Layer::Agua => 0.5,
+            Layer::Superficie => 0.88,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Layer::Fondo => "fondo",
+            Layer::Agua => "agua",
+            Layer::Superficie => "superficie",
+        }
+    }
+}
+
 #[derive(Resource)]
 pub struct DrawState {
     pub brush: Brush,
+    pub view: View,
+    pub layer: Layer,
     /// Modo contemplación: sin paleta, la cámara deriva, tocar hace actuar.
     pub contemplate: bool,
     /// Distancia del plano de dibujo a la cámara, en unidades de mundo.
@@ -30,6 +68,16 @@ impl Default for DrawState {
     fn default() -> Self {
         DrawState {
             brush: Brush::Kelp,
+            // LIENZO_VIEW=buceo arranca buceando (pruebas y capturas)
+            view: if std::env::var("LIENZO_VIEW")
+                .map(|v| v == "buceo")
+                .unwrap_or(false)
+            {
+                View::Buceo
+            } else {
+                View::Dibujo
+            },
+            layer: Layer::Agua,
             contemplate: false,
             depth: 15.0,
             points: vec![],
@@ -82,14 +130,35 @@ pub fn keys(
     }
     if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::Escape) {
         st.contemplate = !st.contemplate;
+        if st.contemplate {
+            st.view = View::Buceo;
+        }
         st.title_dirty = true;
     }
+    if keys.just_pressed(KeyCode::KeyV) {
+        st.view = match st.view {
+            View::Dibujo => View::Buceo,
+            View::Buceo => View::Dibujo,
+        };
+        st.title_dirty = true;
+    }
+    let cycle = |l: Layer, up: bool| -> Layer {
+        let i = Layer::ALL.iter().position(|x| *x == l).unwrap() as i32;
+        let n = Layer::ALL.len() as i32;
+        Layer::ALL[((i + if up { 1 } else { -1 }).rem_euclid(n)) as usize]
+    };
     if keys.just_pressed(KeyCode::BracketLeft) {
-        st.depth = (st.depth - 1.0).max(4.0);
+        match st.view {
+            View::Dibujo => st.layer = cycle(st.layer, false),
+            View::Buceo => st.depth = (st.depth - 1.0).max(4.0),
+        }
         st.title_dirty = true;
     }
     if keys.just_pressed(KeyCode::BracketRight) {
-        st.depth = (st.depth + 1.0).min(26.0);
+        match st.view {
+            View::Dibujo => st.layer = cycle(st.layer, true),
+            View::Buceo => st.depth = (st.depth + 1.0).min(26.0),
+        }
         st.title_dirty = true;
     }
     if keys.just_pressed(KeyCode::KeyZ) && !obra.scene.strokes.is_empty() {
@@ -115,28 +184,35 @@ pub fn keys(
 
 /// Dónde cae el cursor según el pincel: en el suelo, o en el plano de dibujo
 /// paralelo a la cámara.
+/// Rayo contra un plano horizontal a altura `y`.
+fn hit_horizontal(o: Vec3, d: Vec3, y: f32) -> Option<Vec3> {
+    if d.y.abs() < 1e-5 {
+        return None;
+    }
+    let t = (y - o.y) / d.y;
+    if t < 0.0 {
+        return None;
+    }
+    Some(o + d * t)
+}
+
 fn cursor_point(
     pos: Option<Vec2>,
     cam: &Camera,
     cam_tf: &GlobalTransform,
     brush: Brush,
     depth: f32,
+    view: View,
+    layer: Layer,
 ) -> Option<Vec3> {
     let pos = pos?;
     let ray = cam.viewport_to_world(cam_tf, pos).ok()?;
     let o = ray.origin;
     let d: Vec3 = ray.direction.into();
     let hit = match spec(brush).attach {
-        Attach::Floor => {
-            if d.y.abs() < 1e-5 {
-                return None;
-            }
-            let t = -o.y / d.y;
-            if t < 0.0 {
-                return None;
-            }
-            o + d * t
-        }
+        Attach::Floor => hit_horizontal(o, d, 0.0)?,
+        // desde arriba, lo de agua cae en la capa elegida
+        Attach::Water if view == View::Dibujo => hit_horizontal(o, d, layer.height() * HEIGHT)?,
         Attach::Water => {
             let n: Vec3 = cam_tf.forward().into();
             let p0 = o + n * depth;
@@ -197,7 +273,7 @@ pub fn draw(
         st.started = Some(time.elapsed_secs_f64());
     }
     if ptr.down && st.started.is_some() {
-        if let Some(p) = cursor_point(ptr.pos, cam, cam_tf, brush, depth) {
+        if let Some(p) = cursor_point(ptr.pos, cam, cam_tf, brush, depth, st.view, st.layer) {
             let far_enough = st
                 .points
                 .last()

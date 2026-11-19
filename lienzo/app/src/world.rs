@@ -171,15 +171,27 @@ pub fn drift_particles(time: Res<Time>, mut q: Query<(&mut Transform, &Particle)
 }
 
 /// Las cartas miran a la cámara girando solo sobre Y: siempre de pie.
+/// Las cartas miran a la cámara. Buceando giran solo sobre Y (siempre de
+/// pie); desde arriba se tumban hacia la cámara para leerse como dibujos en
+/// el papel. Entre ambas, se mezcla según la inclinación: la transición es
+/// continua.
 pub fn billboards(
-    cam: Query<&Transform, (With<Camera3d>, Without<Billboard>)>,
+    cam: Query<(&Transform, &Orbit), Without<Billboard>>,
     mut q: Query<&mut Transform, With<Billboard>>,
 ) {
-    let Ok(cam) = cam.single() else { return };
+    let Ok((cam, orbit)) = cam.single() else {
+        return;
+    };
+    let f = ((orbit.pitch - 0.55) / (crate::orbit::TOP_PITCH - 0.55)).clamp(0.0, 1.0);
+    let f = f * f * (3.0 - 2.0 * f);
     for mut tf in q.iter_mut() {
         let to_cam = cam.translation - tf.translation;
         let yaw = to_cam.x.atan2(to_cam.z);
         let keep = tf.rotation.to_euler(EulerRot::YXZ).2;
-        tf.rotation = Quat::from_euler(EulerRot::YXZ, yaw, 0.0, keep);
+        let upright = Quat::from_euler(EulerRot::YXZ, yaw, 0.0, keep);
+        // de frente a la cámara: la misma orientación que la cámara, con el
+        // balanceo propio de la carta
+        let facing = cam.rotation * Quat::from_rotation_z(keep);
+        tf.rotation = upright.slerp(facing, f);
     }
 }
