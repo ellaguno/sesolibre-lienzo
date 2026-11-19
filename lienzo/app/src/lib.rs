@@ -152,7 +152,8 @@ pub fn run() -> anyhow::Result<()> {
                 ..default()
             })
             .set(asset_plugin)
-            .set(render_plugin()),
+            .set(render_plugin())
+            .set(task_pools()),
     );
     bevy::asset::embedded_asset!(app, "card.wesl");
     // Obra contemplativa, no juego: ~30 fps en el teléfono y 60 en escritorio
