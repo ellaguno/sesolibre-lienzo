@@ -12,7 +12,7 @@ use lienzo_core::Brush;
 /// dedo y dos filas.
 pub fn palette_h() -> f32 {
     if cfg!(target_os = "android") {
-        180.0
+        230.0
     } else {
         84.0
     }
@@ -20,11 +20,14 @@ pub fn palette_h() -> f32 {
 
 fn font_px() -> f32 {
     if cfg!(target_os = "android") {
-        18.0
+        16.0
     } else {
         14.0
     }
 }
+
+/// Separador en los textos. La fuente por defecto de Bevy no trae "·".
+const SEP: &str = " - ";
 
 #[derive(Component)]
 pub struct PaletteRoot;
@@ -82,7 +85,8 @@ pub fn setup(mut commands: Commands) {
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(14.0),
-            top: Val::Px(12.0),
+            top: Val::Px(if cfg!(target_os = "android") { 56.0 } else { 12.0 }),
+            right: Val::Px(14.0),
             ..default()
         },
         Text::new(""),
@@ -176,19 +180,25 @@ pub fn refresh(
         let titulo = if gallery.editing_title {
             format!("título: {}_   (Enter termina)", obra.scene.title)
         } else {
-            format!("{} (T renombra)", crate::gallery::title_of(&obra))
+            if cfg!(target_os = "android") {
+                crate::gallery::title_of(&obra)
+            } else {
+                format!("{} (T renombra)", crate::gallery::title_of(&obra))
+            }
         };
         let s = if st.contemplate {
             format!(
-                "contemplación · {} trazos · toca un elemento para que actúe · botón derecho orbita · A o Esc vuelve a dibujar",
+                "contemplacion{SEP}{} trazos{SEP}toca un elemento para que actue{SEP}A o Esc vuelve a dibujar",
                 obra.scene.strokes.len()
             )
         } else {
-            format!(
-                "{} · plano a {:.0} ([ ] ajusta) · izquierdo dibuja · derecho orbita · Z deshacer · C vaciar · S guardar · E exportar audio · N nueva · G galería · A contemplar",
-                brush_name(st.brush),
-                st.depth
-            )
+            let ayuda = if cfg!(target_os = "android") {
+                "un dedo dibuja{SEP}dos dedos orbitan"
+            } else {
+                "([ ] ajusta){SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galeria{SEP}A contemplar"
+            }
+            .replace("{SEP}", SEP);
+            format!("{}{SEP}plano a {:.0} {ayuda}", brush_name(st.brush), st.depth)
         };
         let s = format!("{titulo}\n{s}\n{}", gallery.status);
         if text.0 != s {
