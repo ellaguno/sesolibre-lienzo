@@ -53,8 +53,10 @@ impl AssetSource for FsSource {
     }
 }
 
-/// Decodifica un Ogg Vorbis (el formato del pack) a estéreo 48 kHz.
-fn read_ogg_bytes(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
+/// Decodifica un Ogg Vorbis (el formato del pack) a estéreo 48 kHz, directo a
+/// 16 bits: lewton ya entrega i16, y así no hay un buffer float intermedio
+/// (en el teléfono ese pico de memoria se notaba).
+fn read_ogg_bytes(path: &Path, bytes: Vec<u8>) -> Result<Pcm, RenderError> {
     let mut r = lewton::inside_ogg::OggStreamReader::new(std::io::Cursor::new(bytes))
         .map_err(|e| RenderError::Io(path.into(), format!("{e:?}")))?;
     let ch = r.ident_hdr.audio_channels as u16;
@@ -62,29 +64,26 @@ fn read_ogg_bytes(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
     if ch != 2 || sr != SR {
         return Err(RenderError::Format(path.into(), ch, sr));
     }
-    let mut out: Stereo = Vec::new();
+    let mut out: Pcm = Vec::new();
     while let Some(pkt) = r
         .read_dec_packet_itl()
         .map_err(|e| RenderError::Io(path.into(), format!("{e:?}")))?
     {
-        out.extend(
-            pkt.chunks_exact(2)
-                .map(|c| [c[0] as f32 / 32768.0, c[1] as f32 / 32768.0]),
-        );
+        out.extend(pkt.chunks_exact(2).map(|c| [c[0], c[1]]));
     }
     Ok(out)
 }
 
 /// Lee `.ogg` o `.wav` según la extensión, desde bytes ya cargados.
-pub fn decode(path: &Path, bytes: Vec<u8>) -> Result<Stereo, RenderError> {
+pub fn decode(path: &Path, bytes: Vec<u8>) -> Result<Pcm, RenderError> {
     match path.extension().and_then(|e| e.to_str()) {
         Some("ogg") => read_ogg_bytes(path, bytes),
-        _ => read_wav_bytes(path, bytes),
+        _ => Ok(to_pcm(&read_wav_bytes(path, bytes)?)),
     }
 }
 
 /// Lee un archivo de disco (`.ogg` o `.wav`).
-pub fn read_audio(path: &Path) -> Result<Stereo, RenderError> {
+pub fn read_audio(path: &Path) -> Result<Pcm, RenderError> {
     let bytes = std::fs::read(path).map_err(|e| RenderError::Io(path.into(), e.to_string()))?;
     decode(path, bytes)
 }
@@ -152,7 +151,7 @@ impl SampleBank {
                             .map(|rel| {
                                 let bytes =
                                     src.read(rel).map_err(|e| RenderError::Io(rel.into(), e))?;
-                                Ok((rel.to_string(), to_pcm(&decode(Path::new(rel), bytes)?)))
+                                Ok((rel.to_string(), decode(Path::new(rel), bytes)?))
                             })
                             .collect::<Vec<_>>()
                     })

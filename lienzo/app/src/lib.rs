@@ -136,6 +136,15 @@ pub fn run() -> anyhow::Result<()> {
             .set(render_plugin()),
     );
     bevy::asset::embedded_asset!(app, "card.wesl");
+    // Obra contemplativa, no juego: ~30 fps en el teléfono y 60 en escritorio
+    // bastan, y responde al instante a cualquier gesto. En segundo plano, casi
+    // nada. Esto es lo que más batería y CPU ahorra.
+    app.insert_resource(bevy::winit::WinitSettings {
+        focused_mode: bevy::winit::UpdateMode::reactive(std::time::Duration::from_millis(
+            if cfg!(target_os = "android") { 33 } else { 16 },
+        )),
+        unfocused_mode: bevy::winit::UpdateMode::reactive_low_power(std::time::Duration::from_millis(250)),
+    });
     app.add_plugins(bevy::pbr::MaterialPlugin::<material::CardMaterial>::default())
         .insert_resource(Obra {
             scene,
