@@ -2,13 +2,14 @@
 //! sprites pone a lo largo del trazo, de qué tamaño y cómo se mueven.
 
 use crate::world::{to_world, Billboard, Common};
+use crate::material::CardMaterial;
 use bevy::prelude::*;
 use lienzo_core::{Brush, Stroke};
 use std::collections::HashMap;
 
 #[derive(Resource, Default)]
 pub struct SpriteMaterials {
-    cache: HashMap<&'static str, Handle<StandardMaterial>>,
+    cache: HashMap<&'static str, Handle<CardMaterial>>,
 }
 
 impl SpriteMaterials {
@@ -16,19 +17,12 @@ impl SpriteMaterials {
         &mut self,
         name: &'static str,
         assets: &AssetServer,
-        materials: &mut Assets<StandardMaterial>,
-    ) -> Handle<StandardMaterial> {
+        materials: &mut Assets<CardMaterial>,
+    ) -> Handle<CardMaterial> {
         self.cache
             .entry(name)
             .or_insert_with(|| {
-                materials.add(StandardMaterial {
-                    base_color_texture: Some(assets.load(format!("sprites/cut/{name}.png"))),
-                    unlit: true,
-                    alpha_mode: AlphaMode::Blend,
-                    cull_mode: None,
-                    double_sided: true,
-                    ..default()
-                })
+                materials.add(CardMaterial::sprite(assets.load(format!("sprites/cut/{name}.png"))))
             })
             .clone()
     }
@@ -123,7 +117,7 @@ fn spawn_card(
     common: &Common,
     mats: &mut SpriteMaterials,
     assets: &AssetServer,
-    materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<CardMaterial>,
     name: &'static str,
     pos: Vec3,
     height: f32,
@@ -159,7 +153,7 @@ pub fn spawn_stroke(
     common: &Common,
     mats: &mut SpriteMaterials,
     assets: &AssetServer,
-    materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<CardMaterial>,
     stroke: &Stroke,
     index: usize,
 ) {
@@ -323,7 +317,7 @@ pub fn spawn_scene(
     common: Res<Common>,
     mut mats: ResMut<SpriteMaterials>,
     assets: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<CardMaterial>>,
     scene: Res<crate::Obra>,
 ) {
     for (i, s) in scene.scene.strokes.iter().enumerate() {

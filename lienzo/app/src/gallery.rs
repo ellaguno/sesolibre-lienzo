@@ -9,6 +9,7 @@ use crate::Obra;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
 use bevy::picking::events::PointerClick;
+use crate::material::CardMaterial;
 use bevy::prelude::*;
 use bevy::text::FontSize;
 use lienzo_core::Scene;
@@ -146,7 +147,7 @@ fn replace_scene(
     common: &Common,
     mats: &mut SpriteMaterials,
     assets: &AssetServer,
-    materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<CardMaterial>,
 ) {
     for e in owned.iter() {
         commands.entity(e).despawn();
@@ -340,7 +341,7 @@ pub fn apply(
     common: Res<Common>,
     mut mats: ResMut<SpriteMaterials>,
     assets: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<CardMaterial>>,
     mut st: ResMut<DrawState>,
     bank: Res<Bank>,
     mut exporting: ResMut<Exporting>,

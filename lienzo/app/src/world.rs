@@ -3,8 +3,8 @@
 
 use crate::orbit::Orbit;
 use crate::textures;
-use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::post_process::bloom::Bloom;
+use crate::material::CardMaterial;
 use bevy::prelude::*;
 use bevy::render::view::Tonemapping;
 
@@ -36,13 +36,13 @@ pub struct Billboard;
 #[derive(Resource)]
 pub struct Common {
     pub quad: Handle<Mesh>,
-    pub dot: Handle<StandardMaterial>,
+    pub dot: Handle<CardMaterial>,
 }
 
 pub fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<CardMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     commands.spawn((
@@ -53,12 +53,6 @@ pub fn setup(
             intensity: 0.18,
             ..Bloom::NATURAL
         },
-        DistanceFog {
-            color: Color::srgb(0.05, 0.16, 0.26),
-            directional_light_color: Color::NONE,
-            directional_light_exponent: 8.0,
-            falloff: FogFalloff::ExponentialSquared { density: 0.045 },
-        },
         Orbit::default(),
     ));
     commands.insert_resource(ClearColor(Color::srgb(0.012, 0.04, 0.11)));
@@ -67,13 +61,7 @@ pub fn setup(
 
     // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
     // Gire a donde gire la cámara, siempre hay agua.
-    let backdrop = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(textures::backdrop())),
-        unlit: true,
-        fog_enabled: false,
-        cull_mode: Some(bevy::render::render_resource::Face::Front),
-        ..default()
-    });
+    let backdrop = materials.add(CardMaterial::backdrop(images.add(textures::backdrop())));
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop),
@@ -81,12 +69,7 @@ pub fn setup(
     ));
 
     // suelo
-    let sand = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(textures::sand())),
-        unlit: true,
-        perceptual_roughness: 1.0,
-        ..default()
-    });
+    let sand = materials.add(CardMaterial::opaque(images.add(textures::sand())));
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(140.0, 140.0))),
         MeshMaterial3d(sand),
@@ -94,15 +77,7 @@ pub fn setup(
     ));
 
     // rayos de luz desde la superficie
-    let ray = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(textures::ray())),
-        base_color: Color::srgba(1.0, 1.0, 1.0, 0.55),
-        unlit: true,
-        alpha_mode: AlphaMode::Add,
-        cull_mode: None,
-        double_sided: true,
-        ..default()
-    });
+    let ray = materials.add(CardMaterial::additive(images.add(textures::ray()), 0.55));
     let mut seed = 17u32;
     let mut rnd = move || {
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
@@ -123,15 +98,7 @@ pub fn setup(
     }
 
     // partículas en suspensión
-    let dot = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(textures::soft_dot())),
-        base_color: Color::srgba(1.0, 1.0, 1.0, 0.35),
-        unlit: true,
-        alpha_mode: AlphaMode::Add,
-        cull_mode: None,
-        double_sided: true,
-        ..default()
-    });
+    let dot = materials.add(CardMaterial::additive(images.add(textures::soft_dot()), 0.35));
     for _ in 0..350 {
         let s = 0.03 + 0.07 * rnd();
         commands.spawn((

@@ -5,6 +5,7 @@ mod cards;
 mod draw;
 mod gallery;
 mod input;
+mod material;
 mod orbit;
 mod textures;
 mod ui;
@@ -66,10 +67,16 @@ fn project_root() -> PathBuf {
 /// aborta en los drivers Mali (pool de descriptores agotado en un camino que
 /// wgpu considera imposible), y pasa igual con los *binding arrays* apagados.
 fn render_plugin() -> bevy::render::RenderPlugin {
-    use bevy::render::settings::{Backends, WgpuSettings};
+    use bevy::render::settings::{Backends, WgpuLimits, WgpuSettings};
     let mut settings = WgpuSettings::default();
     if cfg!(target_os = "android") {
         settings.backends = Some(Backends::GL);
+        // Sin storage buffers (GLES no los ofrece en el vértice): Bevy pasa a
+        // uniformes, como en WebGL2. Bevy solo lo hace solo en wasm, y con la
+        // prioridad por defecto ignora `limits`; `constrained_limits` sí acota.
+        let mut limits = WgpuLimits::downlevel_webgl2_defaults();
+        limits.max_texture_dimension_2d = 8192;
+        settings.constrained_limits = Some(limits);
     }
     bevy::render::RenderPlugin {
         render_creation: settings.into(),
@@ -82,6 +89,11 @@ pub fn main() {
     if let Err(e) = run() {
         eprintln!("lienzo: {e:#}");
     }
+    // En Android la actividad puede destruirse y volver a crearse en el mismo
+    // proceso, y winit no permite un segundo bucle de eventos: se sale del
+    // proceso para que la siguiente apertura arranque limpia.
+    #[cfg(target_os = "android")]
+    std::process::exit(0);
 }
 
 pub fn run() -> anyhow::Result<()> {
@@ -109,8 +121,8 @@ pub fn run() -> anyhow::Result<()> {
 
     let link = audio::start(bank.clone(), scene.clone())?;
 
-    App::new()
-        .add_plugins(
+    let mut app = App::new();
+    app.add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
@@ -122,7 +134,9 @@ pub fn run() -> anyhow::Result<()> {
                 })
                 .set(asset_plugin)
                 .set(render_plugin()),
-        )
+        );
+    bevy::asset::embedded_asset!(app, "card.wesl");
+    app        .add_plugins(bevy::pbr::MaterialPlugin::<material::CardMaterial>::default())
         .insert_resource(Obra {
             scene,
             dirty: false,

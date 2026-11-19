@@ -7,6 +7,7 @@ use crate::input::Pointer;
 use crate::orbit::Orbit;
 use crate::world::{to_core, Common, HALF_W, HEIGHT};
 use crate::Obra;
+use crate::material::CardMaterial;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use lienzo_core::brush::{spec, Attach};
@@ -165,7 +166,7 @@ pub fn draw(
     common: Res<Common>,
     mut mats: ResMut<SpriteMaterials>,
     assets: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<CardMaterial>>,
 ) {
     let (Ok(window), Ok((cam, cam_tf))) = (windows.single(), cams.single()) else {
         return;
