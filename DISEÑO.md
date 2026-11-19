@@ -314,9 +314,9 @@ ausencia de creación (ahí solo se nada).
 | Fase | Entregable | Pregunta que responde |
 |---|---|---|
 | **0 · Gusto** ✅ *cerrada 18 nov 2026* | Una imagen fija del abismo con la dirección de arte (sprites IA + atmósfera) y **60 s de audio** armados a mano con las muestras reales elegidas. `manifest.toml` con todo lo usado. | ¿Esto emociona? Si no, cambiar el estilo antes de construir. |
-| **1 · Core** | `core/`: escena → motivos → director → mezcla → WAV. Un CLI que toma una escena de prueba y rinde 3 minutos. | ¿Trazo→melodía y las variaciones suenan a música? **Se escucha todos los días.** |
-| **2 · App Linux** | Lienzo 3D, plano de dibujo, 6–8 pinceles, audio en vivo, guardar/abrir. | ¿Dibujar se siente bien? ¿Se descubre solo que el trazo es la melodía? |
-| **3 · Android** | Build táctil, gestos, rendimiento. | ¿Funciona con el dedo y en un teléfono real? |
+| **1 · Core** ✅ | `core/`: escena → motivos → director → mezcla → WAV. Un CLI que toma una escena de prueba y rinde 3 minutos. | ¿Trazo→melodía y las variaciones suenan a música? **Se escucha todos los días.** |
+| **2 · App Linux** ✅ | Lienzo 3D, plano de dibujo, 6–8 pinceles, audio en vivo, guardar/abrir. | ¿Dibujar se siente bien? ¿Se descubre solo que el trazo es la melodía? |
+| **3 · Android** 🔧 *corre en Pixel 9 Pro desde el 18 nov 2026* | Build táctil, gestos, rendimiento. | ¿Funciona con el dedo y en un teléfono real? |
 | **4 · Regreso y galería** | Contemplación, interacción, export de imagen/video/audio, sitio con visor web. | ¿Se vuelve a la obra? ¿La gozan otros? |
 | **5 · Más** | Segundo mundo, iPhone, lo que salga de `IDEAS.md`. | — |
 
