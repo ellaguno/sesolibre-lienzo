@@ -4,7 +4,7 @@
 //!
 //! No sabe de muestras ni de mezcla: produce eventos. El render los toca.
 
-use crate::brush::{spec, Attach, Instrument};
+use crate::brush::{spec_for, Attach, Instrument};
 use crate::motif::{self, Motif};
 use crate::rng::{hash, Rng};
 use crate::scene::{Brush, Scene, Stroke};
@@ -119,7 +119,7 @@ fn schedule_motif(
 fn compose_stroke(out: &mut Vec<Event>, scene: &Scene, i: usize, seconds: f64) {
     let ton = tonality(scene.water);
     let s = &scene.strokes[i];
-    let sp = spec(s.brush);
+    let sp = spec_for(s);
     let seed = scene.seed;
     let pan = pan_of(s);
     let depth = depth_of(s);
@@ -209,7 +209,7 @@ fn compose_ambience(out: &mut Vec<Event>, scene: &Scene) {
     let bubbles: f32 = scene
         .strokes
         .iter()
-        .map(|s| spec(s.brush).bubbles)
+        .map(|s| spec_for(s).bubbles)
         .sum::<f32>()
         .min(2.0)
         / 2.0;
@@ -264,7 +264,7 @@ pub fn describe(scene: &Scene, events: &[Event]) -> String {
         .count();
     s += &format!("  notas {notes} · naturales {nat}\n");
     for (i, st) in scene.strokes.iter().enumerate() {
-        let sp = spec(st.brush);
+        let sp = spec_for(st);
         let m = motif::from_stroke(st, scene.seed, i);
         s += &format!(
             "  [{i}] {:?} {} pts · {:.2} u · {} ms → {}\n",

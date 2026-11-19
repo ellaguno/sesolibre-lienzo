@@ -1,7 +1,7 @@
 //! La paleta: una fila de pinceles abajo y un botón de contemplación. En
 //! contemplación la paleta se esconde; solo queda la obra.
 
-use crate::draw::{brush_name, DrawState, Layer, View};
+use crate::draw::{brush_name, DrawState, Layer, View, SWATCHES};
 use crate::Obra;
 use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
@@ -38,6 +38,7 @@ pub enum Action {
     Water(Water),
     View(View),
     Layer(Layer),
+    Swatch(usize),
     Contemplate,
     Undo,
     Gallery,
@@ -59,6 +60,9 @@ pub struct WaterRow;
 
 #[derive(Component)]
 pub struct LayerCol;
+
+#[derive(Component)]
+pub struct SwatchRow;
 
 /// La fuente de toda la interfaz (Noto Sans, OFL).
 #[derive(Resource)]
@@ -98,6 +102,35 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
             button(row, &font.0, Action::Undo, "deshacer");
             button(row, &font.0, Action::Gallery, "galería");
             button(row, &font.0, Action::Contemplate, "contemplar");
+        });
+    commands
+        .spawn((
+            SwatchRow,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                bottom: Val::Px(palette_h() + 8.0),
+                justify_content: JustifyContent::Center,
+                column_gap: Val::Px(8.0),
+                ..default()
+            },
+        ))
+        .with_children(|row| {
+            for (i, c) in SWATCHES.iter().enumerate() {
+                row.spawn((
+                    Action::Swatch(i),
+                    Node {
+                        width: Val::Px(30.0),
+                        height: Val::Px(30.0),
+                        border: UiRect::all(Val::Px(2.0)),
+                        border_radius: BorderRadius::all(Val::Px(999.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(c[0], c[1], c[2], 0.9)),
+                    BorderColor::all(BORDER),
+                ));
+            }
         });
     commands
         .spawn((
@@ -237,6 +270,11 @@ pub fn on_click(
             st.layer = *l;
             st.title_dirty = true;
         }
+        Action::Swatch(i) => {
+            st.swatch = *i;
+            st.brush = Brush::Color;
+            st.title_dirty = true;
+        }
         // deshacer vive en draw::keys; se simula la tecla
         Action::Undo => keys.press(KeyCode::KeyZ),
         Action::Gallery => keys.press(KeyCode::KeyG),
@@ -251,6 +289,15 @@ pub fn refresh(
     mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor)>,
     mut root: Query<&mut Node, Or<(With<PaletteRoot>, With<WaterRow>)>>,
     mut layers: Query<&mut Node, (With<LayerCol>, Without<PaletteRoot>, Without<WaterRow>)>,
+    mut swatches: Query<
+        &mut Node,
+        (
+            With<SwatchRow>,
+            Without<LayerCol>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+        ),
+    >,
     mut hint: Query<&mut Text, With<Hint>>,
 ) {
     for (action, mut bg, mut border) in buttons.iter_mut() {
@@ -259,14 +306,24 @@ pub fn refresh(
             Action::Water(w) => *w == obra.scene.water,
             Action::View(v) => *v == st.view,
             Action::Layer(l) => *l == st.layer,
+            Action::Swatch(i) => *i == st.swatch && st.brush == Brush::Color,
             Action::Contemplate => st.contemplate,
             Action::Undo | Action::Gallery => false,
         };
-        bg.0 = if on { BTN_ON } else { BTN };
+        if !matches!(action, Action::Swatch(_)) {
+            bg.0 = if on { BTN_ON } else { BTN };
+        }
         *border = BorderColor::all(if on { BORDER_ON } else { BORDER });
     }
     for mut node in root.iter_mut() {
         node.display = if st.contemplate {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+    for mut node in swatches.iter_mut() {
+        node.display = if st.contemplate || st.brush != Brush::Color {
             Display::None
         } else {
             Display::Flex

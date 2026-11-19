@@ -81,6 +81,11 @@ impl CardMaterial {
         m
     }
 
+    /// Acuarela: mezcla por alfa, teñida de un color, con niebla y cáusticas suaves.
+    pub fn watercolor(texture: Handle<Image>, color: Color) -> Self {
+        Self::with_caustics(texture, color, AlphaMode::Blend, true, 0.25)
+    }
+
     /// Aditivo (luz, partículas), con niebla.
     pub fn additive(texture: Handle<Image>, alpha: f32) -> Self {
         Self::new(

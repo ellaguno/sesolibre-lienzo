@@ -1,7 +1,7 @@
 //! Del trazo al motivo. El trazo ES la partitura: su contorno es la melodía,
 //! su longitud la duración, su velocidad la dinámica.
 
-use crate::brush::{spec, Articulation, BrushSpec};
+use crate::brush::{spec_for, Articulation, BrushSpec};
 use crate::rng::Rng;
 use crate::scene::Stroke;
 
@@ -54,7 +54,7 @@ fn velocity(stroke: &Stroke) -> f32 {
 }
 
 pub fn from_stroke(stroke: &Stroke, seed: u64, index: usize) -> Option<Motif> {
-    let sp: BrushSpec = spec(stroke.brush);
+    let sp: BrushSpec = spec_for(stroke);
     sp.instrument?;
     let mut rng = Rng::from_parts(&[seed, index as u64, 0x6d6f_7469]);
     let n = note_count(stroke, &mut rng);

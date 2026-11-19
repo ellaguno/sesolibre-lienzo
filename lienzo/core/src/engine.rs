@@ -3,7 +3,7 @@
 //! fin, y la app lo alimenta a la tarjeta de sonido bloque a bloque. Lo que se
 //! oye en vivo y lo que se exporta es el mismo código.
 
-use crate::brush::spec;
+use crate::brush::spec_for;
 use crate::director::{compose, Event};
 use crate::motif;
 use crate::render::{
@@ -402,7 +402,7 @@ impl Engine {
         let Some(stroke) = self.scene.strokes.get(index) else {
             return;
         };
-        let sp = spec(stroke.brush);
+        let sp = spec_for(stroke);
         let now = self.now_seconds() + 0.05;
         let ton = tonality(self.scene.water);
         let beat = ton.beat_seconds();

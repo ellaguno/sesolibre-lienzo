@@ -49,9 +49,22 @@ impl Layer {
     }
 }
 
+/// Los colores de la acuarela (sRGB). Pocos y bonitos; se eligen por toque.
+pub const SWATCHES: [[f32; 3]; 8] = [
+    [0.96, 0.55, 0.50], // coral
+    [0.98, 0.76, 0.40], // ámbar
+    [0.98, 0.92, 0.55], // arena luminosa
+    [0.55, 0.85, 0.65], // verde agua
+    [0.35, 0.80, 0.85], // turquesa
+    [0.40, 0.55, 0.95], // azul
+    [0.70, 0.55, 0.90], // violeta
+    [0.96, 0.96, 0.98], // blanco
+];
+
 #[derive(Resource)]
 pub struct DrawState {
     pub brush: Brush,
+    pub swatch: usize,
     pub view: View,
     pub layer: Layer,
     /// Modo contemplación: sin paleta, la cámara deriva, tocar hace actuar.
@@ -68,6 +81,7 @@ impl Default for DrawState {
     fn default() -> Self {
         DrawState {
             brush: Brush::Kelp,
+            swatch: 4,
             // LIENZO_VIEW=buceo arranca buceando (pruebas y capturas)
             view: if std::env::var("LIENZO_VIEW")
                 .map(|v| v == "buceo")
@@ -98,6 +112,7 @@ pub fn brush_name(b: Brush) -> &'static str {
         Brush::Burbujas => "Burbujas",
         Brush::Ballena => "Ballena",
         Brush::Barco => "Barco",
+        Brush::Color => "Color",
     }
 }
 
@@ -304,11 +319,14 @@ pub fn draw(
             let ms = ((time.elapsed_secs_f64() - t0) * 1000.0).max(60.0) as u32;
             let pts: Vec<lienzo_core::Point> = st.points.iter().map(|p| to_core(*p)).collect();
             let is_tap = pts.len() == 1 || ms < 180;
-            let stroke = if is_tap {
+            let mut stroke = if is_tap {
                 Stroke::tap(brush, pts[0])
             } else {
                 Stroke::line(brush, pts, ms)
             };
+            if brush == Brush::Color {
+                stroke = stroke.with_color(SWATCHES[st.swatch]);
+            }
             let index = obra.scene.strokes.len();
             cards::spawn_stroke(
                 &mut commands,

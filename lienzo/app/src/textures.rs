@@ -37,6 +37,23 @@ pub fn soft_dot() -> Image {
     })
 }
 
+/// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
+/// color lo pone el material).
+pub fn blob() -> Image {
+    make(96, 96, |u, v| {
+        let x = u - 0.5;
+        let y = v - 0.5;
+        let ang = y.atan2(x);
+        let wobble = 1.0 + 0.10 * (ang * 3.0).sin() + 0.06 * (ang * 7.0 + 1.3).cos();
+        let d = (x * x + y * y).sqrt() * 2.0 / wobble;
+        let edge = (1.0 - d).clamp(0.0, 1.0);
+        // más pigmento en el borde, como la acuarela al secarse
+        let a = (edge.powf(0.6) * 0.75 + (edge * (1.0 - edge) * 4.0).powf(2.0) * 0.35).min(1.0);
+        let grain = 0.92 + 0.08 * (((u * 53.0).sin() * (v * 47.0).cos() * 13.0).fract());
+        [grain, grain, grain, a * 0.9]
+    })
+}
+
 /// Rayo de luz: brillante arriba, se funde hacia abajo, bordes suaves.
 pub fn ray() -> Image {
     make(64, 512, |u, v| {

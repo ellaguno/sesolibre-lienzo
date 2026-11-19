@@ -43,6 +43,8 @@ pub struct Ray {
 pub struct Common {
     pub quad: Handle<Mesh>,
     pub dot: Handle<CardMaterial>,
+    /// Textura de acuarela para los trazos de color.
+    pub blob: Handle<Image>,
     pub backdrop: Handle<CardMaterial>,
     pub sand: Handle<CardMaterial>,
     pub ray: Handle<CardMaterial>,
@@ -142,6 +144,7 @@ pub fn setup(
     commands.insert_resource(Common {
         quad,
         dot,
+        blob: images.add(textures::blob()),
         backdrop,
         sand,
         ray,
@@ -189,9 +192,10 @@ pub fn billboards(
         let yaw = to_cam.x.atan2(to_cam.z);
         let keep = tf.rotation.to_euler(EulerRot::YXZ).2;
         let upright = Quat::from_euler(EulerRot::YXZ, yaw, 0.0, keep);
-        // de frente a la cámara: la misma orientación que la cámara, con el
-        // balanceo propio de la carta
-        let facing = cam.rotation * Quat::from_rotation_z(keep);
-        tf.rotation = upright.slerp(facing, f);
+        // tumbada sobre el papel (mirando al cielo), girada hacia la cámara en
+        // el plano, con el balanceo propio de la carta: desde arriba se lee
+        // como un dibujo pegado en el lienzo
+        let flat = Quat::from_euler(EulerRot::YXZ, yaw, -std::f32::consts::FRAC_PI_2, keep);
+        tf.rotation = upright.slerp(flat, f);
     }
 }

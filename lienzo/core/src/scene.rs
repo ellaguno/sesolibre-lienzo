@@ -36,10 +36,13 @@ pub enum Brush {
     Burbujas,
     Ballena,
     Barco,
+    /// Trazo de acuarela: color libre que se queda en el agua. Familia Color
+    /// (DISEÑO §11.3); musicalmente es colchón.
+    Color,
 }
 
 impl Brush {
-    pub const ALL: [Brush; 8] = [
+    pub const ALL: [Brush; 9] = [
         Brush::Kelp,
         Brush::Coral,
         Brush::Anemona,
@@ -48,6 +51,7 @@ impl Brush {
         Brush::Burbujas,
         Brush::Ballena,
         Brush::Barco,
+        Brush::Color,
     ];
 }
 
@@ -59,6 +63,9 @@ pub struct Stroke {
     /// Duración del gesto en milisegundos. Da la dinámica: rápido = marcato.
     #[serde(default = "default_gesture_ms")]
     pub gesture_ms: u32,
+    /// Color del trazo (sRGB 0..1), solo para la familia Color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<[f32; 3]>,
 }
 
 fn default_gesture_ms() -> u32 {
@@ -71,6 +78,7 @@ impl Stroke {
             brush,
             points: vec![p],
             gesture_ms: 150,
+            color: None,
         }
     }
 
@@ -79,7 +87,32 @@ impl Stroke {
             brush,
             points,
             gesture_ms,
+            color: None,
         }
+    }
+
+    pub fn with_color(mut self, rgb: [f32; 3]) -> Self {
+        self.color = Some(rgb);
+        self
+    }
+
+    /// Tono del color en grados (0..360), si el trazo tiene color.
+    pub fn hue(&self) -> Option<f32> {
+        let [r, g, b] = self.color?;
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let d = max - min;
+        if d < 1e-4 {
+            return Some(0.0);
+        }
+        let h = if max == r {
+            60.0 * (((g - b) / d) % 6.0)
+        } else if max == g {
+            60.0 * ((b - r) / d + 2.0)
+        } else {
+            60.0 * ((r - g) / d + 4.0)
+        };
+        Some(h.rem_euclid(360.0))
     }
 
     pub fn length(&self) -> f32 {

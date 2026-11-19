@@ -10,6 +10,7 @@ use std::collections::HashMap;
 #[derive(Resource, Default)]
 pub struct SpriteMaterials {
     cache: HashMap<&'static str, Handle<CardMaterial>>,
+    colors: HashMap<[u8; 3], Handle<CardMaterial>>,
 }
 
 impl SpriteMaterials {
@@ -24,6 +25,31 @@ impl SpriteMaterials {
             .or_insert_with(|| {
                 materials.add(CardMaterial::sprite(
                     assets.load(format!("sprites/cut/{name}.png")),
+                ))
+            })
+            .clone()
+    }
+}
+
+impl SpriteMaterials {
+    /// Material de acuarela de un color (uno por color, compartido).
+    fn color(
+        &mut self,
+        rgb: [f32; 3],
+        blob: &Handle<Image>,
+        materials: &mut Assets<CardMaterial>,
+    ) -> Handle<CardMaterial> {
+        let key = [
+            (rgb[0] * 255.0) as u8,
+            (rgb[1] * 255.0) as u8,
+            (rgb[2] * 255.0) as u8,
+        ];
+        self.colors
+            .entry(key)
+            .or_insert_with(|| {
+                materials.add(CardMaterial::watercolor(
+                    blob.clone(),
+                    Color::srgb(rgb[0], rgb[1], rgb[2]),
                 ))
             })
             .clone()
@@ -293,6 +319,35 @@ pub fn spawn_stroke(
                 Motion::Swim,
                 0.0,
             );
+        }
+        Brush::Color => {
+            // manchas de acuarela encadenadas a lo largo del gesto; más grandes
+            // si el gesto fue lento
+            let rgb = stroke.color.unwrap_or([0.9, 0.6, 0.5]);
+            let mat = mats.color(rgb, &common.blob, materials);
+            let slow = (1.0 - (stroke.speed() / 2.5).clamp(0.0, 1.0)) * 0.5;
+            for (k, (p, _)) in along(stroke, 0.22).into_iter().enumerate() {
+                let r = 0.55 + 0.45 * h(k) + slow;
+                let jitter = Vec3::new(h(k + 31) - 0.5, h(k + 41) - 0.5, h(k + 51) - 0.5) * 0.25;
+                commands.spawn((
+                    Mesh3d(common.quad.clone()),
+                    MeshMaterial3d(mat.clone()),
+                    Transform::from_translation(p + jitter)
+                        .with_rotation(Quat::from_rotation_z(h(k + 61) * 6.28))
+                        .with_scale(Vec3::new(r, r, 1.0)),
+                    Card {
+                        stroke: index,
+                        kind: Motion::Still,
+                        phase: 0.0,
+                        base: p + jitter,
+                        flip: false,
+                        pulse: 0.0,
+                        size: Vec2::splat(r),
+                    },
+                    Owned(index),
+                    Billboard,
+                ));
+            }
         }
         Brush::Barco => {
             let p = to_world(stroke.points[0]);

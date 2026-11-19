@@ -2,7 +2,7 @@
 //! y qué sonido natural trae cada uno. Es dato; añadir un pincel no toca el
 //! director ni el render.
 
-use crate::scene::Brush;
+use crate::scene::{Brush, Stroke};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -110,6 +110,29 @@ pub struct BrushSpec {
     pub bubbles: f32,
 }
 
+/// La especificación de un trazo concreto: igual que `spec`, salvo que un
+/// trazo de color elige instrumento por su tono: cálidos = cuerdas (viola),
+/// verdes = flauta, fríos = armónicos de violín (cristal).
+pub fn spec_for(stroke: &Stroke) -> BrushSpec {
+    let mut sp = spec(stroke.brush);
+    if stroke.brush == Brush::Color {
+        if let Some(h) = stroke.hue() {
+            sp.instrument = Some(if !(60.0..300.0).contains(&h) {
+                Instrument::ViolaSus
+            } else if h < 170.0 {
+                Instrument::FluteSus
+            } else {
+                Instrument::ViolinHarm
+            });
+            // los fríos van más agudos
+            if h >= 170.0 && h < 300.0 {
+                sp.lo_degree += 5;
+            }
+        }
+    }
+    sp
+}
+
 pub fn spec(b: Brush) -> BrushSpec {
     match b {
         Brush::Kelp => BrushSpec {
@@ -194,6 +217,19 @@ pub fn spec(b: Brush) -> BrushSpec {
             interval_s: (40.0, 70.0),
             natural: Some("whale"),
             natural_interval_s: (35.0, 60.0),
+            bubbles: 0.0,
+        },
+        // colchón: notas largas y ligadas, pocas, en el registro medio
+        Brush::Color => BrushSpec {
+            instrument: Some(Instrument::ViolaSus),
+            articulation: Articulation::Sustain,
+            attach: Attach::Water,
+            lo_degree: 3,
+            span_degrees: 6,
+            note_beats: 4.0,
+            interval_s: (24.0, 40.0),
+            natural: None,
+            natural_interval_s: (0.0, 0.0),
             bubbles: 0.0,
         },
         Brush::Barco => BrushSpec {

@@ -386,6 +386,16 @@ no dos pantallas.
    armónicos, campanas, y su intensidad modula el brillo del máster.
 4. **Agua**: no se dibuja; se elige. Ver 11.4.
 5. **Ruta**: un trazo especial en la vista cenital, la **ruta de buceo** (11.6).
+6. **Relieve** (añadido el 19 nov): el fondo no es plano, se esculpe. Pinceles *elevar*
+   (dunas, rocas, acantilados) y *hundir* (fosas, cuevas) deforman un mapa de alturas
+   sobre el que se asientan los elementos de suelo; la arena, la roca y las cáusticas
+   siguen el relieve. Referencia: el terreno procedural de *abyssal-garden*.
+   *Musicalmente* es el **registro grave**: una cresta añade un bordón sostenido (tuba,
+   cello en octava baja); una fosa oscurece el filtro y alarga la reverb al pasar por ella.
+
+En la vista cenital las cartas se muestran **tumbadas sobre el papel** (no de frente a la
+cámara): desde arriba se leen como dibujos pegados al lienzo, que es la idea de que un
+niño dibuje; buceando se ponen de pie. La mezcla entre ambas posturas es continua.
 
 ### 11.4 Las aguas
 
@@ -449,13 +459,14 @@ renderizable con su audio.
 
 Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente.
 
-1. **Aguas**: el preset como datos (colores, niebla, claridad, modo musical) y el cambio en
+1. ✅ **Aguas**: el preset como datos (colores, niebla, claridad, modo musical) y el cambio en
    caliente. Caribe y Abismo primero. *Es lo que más cambia la sensación por menos código.*
 2. **Luz procedural básica**: cáusticas animadas en suelo y cartas, rayos que se mueven,
    partículas con el color del agua.
-3. **Vista cenital de dibujo** con capa de altura, y la transición cenital ↔ buceo.
-4. **Familia Color** (cintas de acuarela) y **familia Luz** (faroles, haz, arcoíris), con su
-   música.
+3. **Vista cenital de dibujo** con capa de altura, y la transición cenital ↔ buceo. ✅
+4. **Familia Color** (manchas de acuarela) ✅ y **familia Luz** (faroles, haz, arcoíris),
+   con su música.
+4b. **Relieve**: mapa de alturas esculpible y elementos que se asientan en él.
 5. **Refracción y superficie** (post-proceso).
 6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
 7. Más elementos (sprites nuevos con Gemini, mismo estilo).
