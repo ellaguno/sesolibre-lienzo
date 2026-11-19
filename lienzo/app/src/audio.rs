@@ -12,6 +12,8 @@ pub enum Msg {
     Scene(Scene, Option<usize>),
     /// Un elemento actúa: su motivo suena ahora.
     Play(usize),
+    /// Dónde está el oído.
+    Listener(lienzo_core::Listener),
 }
 
 #[derive(Resource)]
@@ -27,6 +29,10 @@ impl AudioLink {
 
     pub fn play(&self, index: usize) {
         let _ = self.tx.send(Msg::Play(index));
+    }
+
+    pub fn set_listener(&self, l: lienzo_core::Listener) {
+        let _ = self.tx.send(Msg::Listener(l));
     }
 
     pub fn now_seconds(&self) -> f64 {
@@ -99,6 +105,7 @@ pub fn start(bank: Arc<SampleBank>, scene: Scene) -> anyhow::Result<AudioLink> {
                                     }
                                 }
                                 Msg::Play(i) => e.play_stroke_now(i),
+                                Msg::Listener(l) => e.set_listener(l),
                             }
                         }
                         e.process(&mut scratch);

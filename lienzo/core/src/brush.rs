@@ -297,6 +297,19 @@ pub fn spec(b: Brush) -> BrushSpec {
             natural_interval_s: (0.0, 0.0),
             bubbles: 0.0,
         },
+        // La ruta no suena: mueve el oído.
+        Brush::Ruta => BrushSpec {
+            instrument: None,
+            articulation: Articulation::Sustain,
+            attach: Attach::Water,
+            lo_degree: 0,
+            span_degrees: 0,
+            note_beats: 0.0,
+            interval_s: (0.0, 0.0),
+            natural: None,
+            natural_interval_s: (0.0, 0.0),
+            bubbles: 0.0,
+        },
         Brush::Barco => BrushSpec {
             instrument: None,
             articulation: Articulation::Sustain,

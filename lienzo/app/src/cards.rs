@@ -127,6 +127,24 @@ pub enum Motion {
 #[derive(Component)]
 pub struct Owned(pub usize);
 
+#[derive(Component)]
+pub struct RouteDot;
+
+/// Los puntos de la ruta solo se ven al dibujar.
+pub fn route_visibility(
+    st: Res<crate::draw::DrawState>,
+    mut q: Query<&mut Visibility, With<RouteDot>>,
+) {
+    let show = st.view == crate::draw::View::Dibujo && !st.contemplate;
+    for mut v in q.iter_mut() {
+        *v = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
 fn hash01(a: usize, b: usize) -> f32 {
     let mut h =
         (a as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (b as u64).wrapping_mul(0xBF58476D1CE4E5B9);
@@ -481,6 +499,28 @@ pub fn spawn_stroke(
             }
         }
         Brush::Hundir => {}
+        Brush::Ruta => {
+            // puntitos de luz a lo largo de la ruta; en el buceo se ocultan
+            for (k, (p, _)) in along(stroke, 0.35).into_iter().enumerate() {
+                commands.spawn((
+                    Mesh3d(common.quad.clone()),
+                    MeshMaterial3d(common.dot.clone()),
+                    Transform::from_translation(p).with_scale(Vec3::splat(0.14)),
+                    Card {
+                        stroke: index,
+                        kind: Motion::Still,
+                        phase: h(k) * 6.28,
+                        base: p,
+                        flip: false,
+                        pulse: 0.0,
+                        size: Vec2::splat(0.14),
+                    },
+                    RouteDot,
+                    Owned(index),
+                    Billboard,
+                ));
+            }
+        }
         Brush::Barco => {
             let p = to_world(stroke.points[0]);
             spawn_card(

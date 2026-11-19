@@ -11,13 +11,14 @@ pub mod engine;
 pub mod motif;
 pub mod render;
 pub mod rng;
+pub mod route;
 pub mod scene;
 pub mod terrain;
 pub mod theory;
 pub mod variation;
 
 pub use director::{compose, Event};
-pub use engine::{render_offline, Engine, EngineOptions};
+pub use engine::{render_offline, Engine, EngineOptions, Listener};
 pub use render::{write_wav, AssetSource, FsSource, SampleBank, SR};
 pub use scene::{Brush, Point, Scene, Stroke, Water};
 pub use theory::{tonality, Tonality};

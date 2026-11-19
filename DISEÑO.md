@@ -468,7 +468,7 @@ Cada paso produce algo que se ve y se oye; el usuario valida antes del siguiente
    con su música.
 4b. ✅ **Relieve**: mapa de alturas esculpible y elementos que se asientan en él.
 5. ✅ **Refracción y superficie**: superficie con ventana de Snell y oleaje; refracción con la pila de efectos de Bevy (lente que respira, aberración leve, viñeta). Los rayos nacen en la superficie.
-6. **Ruta de buceo**: trazo, reproducción, guardado; exportar el recorrido como vídeo.
+6. ✅ **Ruta de buceo**: trazo, reproducción en bucle al contemplar, ruta automática, oído que se mueve con la cámara. *Pendiente:* exportar el recorrido como vídeo.
 7. Más elementos (sprites nuevos con Gemini, mismo estilo).
 
 ### 11.9 Decisiones tomadas (19 nov 2026)

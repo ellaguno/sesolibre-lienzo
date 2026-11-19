@@ -41,7 +41,22 @@ impl Default for Orbit {
     }
 }
 
-pub const YAW_LIMIT: f32 = 1.15;
+impl Orbit {
+    /// Toma como estado propio la pose actual de la cámara, para que al pasar
+    /// de nadar a orbitar no haya salto.
+    pub fn adopt(&mut self, tf: &Transform) {
+        let d = tf.translation - self.target;
+        self.distance = d.length().clamp(DIST_MIN, DIST_MAX);
+        self.yaw = d.x.atan2(d.z);
+        self.dive_pitch = (d.y / d.length().max(0.001))
+            .asin()
+            .clamp(PITCH_MIN, PITCH_MAX);
+        self.pitch = self.dive_pitch;
+        self.idle = 0.0;
+    }
+}
+
+pub const YAW_LIMIT: f32 = std::f32::consts::PI;
 pub const PITCH_MIN: f32 = -0.55;
 pub const PITCH_MAX: f32 = 0.9;
 /// Vista cenital: 65° sobre la horizontal (25° de inclinación respecto a la
@@ -54,9 +69,13 @@ pub fn control(
     ptr: Res<Pointer>,
     time: Res<Time>,
     st: Res<DrawState>,
+    dive: Res<crate::dive::Dive>,
     windows: Query<&Window, With<PrimaryWindow>>,
     mut q: Query<(&mut Orbit, &mut Transform)>,
 ) {
+    if dive.active {
+        return;
+    }
     let Ok((mut o, mut tf)) = q.single_mut() else {
         return;
     };

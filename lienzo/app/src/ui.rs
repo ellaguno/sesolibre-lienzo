@@ -337,6 +337,13 @@ pub fn refresh(
         };
     }
     if let Ok(mut text) = hint.single_mut() {
+        if st.contemplate {
+            // contemplar es solo la obra
+            if !text.0.is_empty() {
+                text.0.clear();
+            }
+            return;
+        }
         let titulo = if gallery.editing_title {
             format!("título: {}_   (Enter termina)", obra.scene.title)
         } else {

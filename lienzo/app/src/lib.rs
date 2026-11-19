@@ -2,6 +2,7 @@
 
 mod audio;
 mod cards;
+mod dive;
 mod draw;
 mod gallery;
 mod input;
@@ -180,6 +181,7 @@ pub fn run() -> anyhow::Result<()> {
         .init_resource::<input::Pointer>()
         .init_resource::<water::Applied>()
         .init_resource::<terrain::Built>()
+        .init_resource::<dive::Dive>()
         .init_resource::<gallery::Gallery>()
         .init_resource::<gallery::Pending>()
         .init_resource::<gallery::Exporting>()
@@ -202,26 +204,35 @@ pub fn run() -> anyhow::Result<()> {
         .add_systems(
             Update,
             (
-                input::gather,
-                gallery::keys,
-                gallery::apply,
-                gallery::refresh,
-                draw::keys,
-                draw::draw,
-                draw::touch,
-                ui::refresh,
-                water::apply,
-                terrain::update,
-                cards::resettle,
-                orbit::control,
-                world::drift_particles,
-                world::sway_rays,
-                world::refraction,
-                cards::animate,
-                world::billboards,
-                draw::title,
-                sync_audio,
-                shot,
+                (
+                    input::gather,
+                    gallery::keys,
+                    gallery::apply,
+                    gallery::refresh,
+                    draw::keys,
+                    draw::draw,
+                    draw::touch,
+                    ui::refresh,
+                    water::apply,
+                    terrain::update,
+                    cards::resettle,
+                    orbit::control,
+                )
+                    .chain(),
+                (
+                    dive::swim,
+                    dive::listener,
+                    cards::route_visibility,
+                    world::drift_particles,
+                    world::sway_rays,
+                    world::refraction,
+                    cards::animate,
+                    world::billboards,
+                    draw::title,
+                    sync_audio,
+                    shot,
+                )
+                    .chain(),
             )
                 .chain(),
         )

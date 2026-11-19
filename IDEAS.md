@@ -20,6 +20,9 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 - Humanización de micro-tiempo ahora que el reloj es preciso. — 2026-11-18
 
 ## Visual
+- Cáusticas menos regulares (hoy, tres senos que de cerca forman rejilla): textura de cáusticas o más octavas. — 2026-11-19
+- Refracción por campo de ondas (nodo de post-proceso propio) en vez de la lente que respira. — 2026-11-19
+- Sol visible por la ventana de Snell y rayos que converjan hacia él. — 2026-11-19
 - (v2, en diseño §11) Aguas Caribe/Hawái/cristalina, cáusticas, refracción, arcoíris, vista cenital de dibujo, ruta de buceo. — 2026-11-19, Eduardo
 - Buzo como elemento dibujable que sigue la ruta de buceo (el autor dentro de su obra). — 2026-11-19
 - Superficie vista desde arriba en la vista cenital: el lienzo es la superficie del mar y se dibuja "a través" del agua. — 2026-11-19
@@ -28,6 +31,7 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 - Modo "fotografía": encuadre, profundidad de campo y filtros para la postal. — 2026-11-18
 
 ## Compartir
+- Exportar el buceo (ruta + obra) como vídeo con audio, render fuera de línea. — 2026-11-19, pendiente del paso 6
 - Obras colaborativas: varios autores sobre la misma escena, cada uno con su color de trazo. — 2026-11-18
 - "Remezcla": abrir la obra de otro y continuarla, con la cadena de autoría visible. — 2026-11-18
 - Reproducción en pantalla grande / TV como obra ambiental. — 2026-11-18

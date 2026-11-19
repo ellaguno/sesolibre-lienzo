@@ -20,6 +20,20 @@ struct Voice {
     start: usize,
     gl: f32,
     gr: f32,
+    /// Trazo que la produce: su posición respecto al oyente modula paneo y nivel.
+    stroke: Option<usize>,
+}
+
+/// Dónde está y hacia dónde mira el oído (coordenadas del core). Lo mueve la
+/// cámara de la app: la ruta de buceo es también una interpretación.
+#[derive(Clone, Copy, Debug)]
+pub struct Listener {
+    pub x: f32,
+    pub z: f32,
+    /// Hacia dónde mira, en radianes (0 = −z, como la cámara por defecto).
+    pub yaw: f32,
+    /// 0 = fijo (como siempre) .. 1 = espacialización completa.
+    pub amount: f32,
 }
 
 struct OnePole {
@@ -168,6 +182,9 @@ pub struct Engine {
     scene: Scene,
     /// Eventos inmediatos (respuesta al gesto), fuera del plan del director.
     pending: Vec<Event>,
+    listener: Listener,
+    /// Centroides de los trazos, para espacializar sin tocar la escena.
+    centroids: Vec<(f32, f32)>,
 }
 
 impl Engine {
@@ -188,6 +205,13 @@ impl Engine {
             horizon: 0.0,
             scene: scene.clone(),
             pending: vec![],
+            listener: Listener {
+                x: 0.0,
+                z: 1.0,
+                yaw: 0.0,
+                amount: 0.0,
+            },
+            centroids: vec![],
         };
         e.set_scene(scene);
         e
@@ -204,8 +228,20 @@ impl Engine {
     /// Cambia la obra en caliente. Lo que ya sonó se queda; lo que viene se
     /// recompone desde ahora. Determinista: misma escena + mismo instante de
     /// cambio = mismo resultado.
+    pub fn set_listener(&mut self, l: Listener) {
+        self.listener = l;
+    }
+
     pub fn set_scene(&mut self, scene: Scene) {
         self.opts.wet = tonality(scene.water).wet;
+        self.centroids = scene
+            .strokes
+            .iter()
+            .map(|s| {
+                let c = s.centroid();
+                (c.x, c.z)
+            })
+            .collect();
         self.scene = scene;
         self.rng = Rng::from_parts(&[self.seed, 0x7265_6e64, self.clock as u64]);
         self.horizon = 0.0;
@@ -260,6 +296,11 @@ impl Engine {
     }
 
     fn start_event(&mut self, ev: &Event) {
+        let stroke_of = match ev {
+            Event::Note { stroke, .. } => *stroke,
+            Event::Natural { stroke, .. } => Some(*stroke),
+            _ => None,
+        };
         let (buf, t, gain, pan) = match ev {
             Event::Note {
                 t,
@@ -309,17 +350,44 @@ impl Engine {
             }
             Event::Ambience { .. } => return,
         };
-        self.push_voice(Arc::new(to_pcm(&buf)), t, gain, pan);
+        self.push_voice_of(Arc::new(to_pcm(&buf)), t, gain, pan, stroke_of);
     }
 
     fn push_voice(&mut self, buf: Arc<Pcm>, t: f64, gain: f32, pan: f32) {
+        self.push_voice_of(buf, t, gain, pan, None);
+    }
+
+    fn push_voice_of(&mut self, buf: Arc<Pcm>, t: f64, gain: f32, pan: f32, stroke: Option<usize>) {
         let theta = (pan.clamp(-1.0, 1.0) + 1.0) * std::f32::consts::FRAC_PI_4;
         self.voices.push(Voice {
             buf,
             start: (t * SR as f64) as usize,
             gl: gain * theta.cos(),
             gr: gain * theta.sin(),
+            stroke,
         });
+    }
+
+    /// Ganancias izquierda/derecha de una voz según dónde esté su trazo
+    /// respecto al oyente. Con `amount` 0 devuelve las fijas.
+    fn spatial(&self, v: &Voice) -> (f32, f32) {
+        let l = self.listener;
+        let (Some(i), true) = (v.stroke, l.amount > 0.001) else {
+            return (v.gl, v.gr);
+        };
+        let Some(&(sx, sz)) = self.centroids.get(i) else {
+            return (v.gl, v.gr);
+        };
+        let (dx, dz) = (sx - l.x, sz - l.z);
+        let dist = (dx * dx + dz * dz).sqrt();
+        // ángulo relativo a la mirada: derecha positiva
+        let ang = dx.atan2(-dz) - l.yaw;
+        let pan = ang.sin().clamp(-1.0, 1.0) * 0.85;
+        let near = 1.0 / (1.0 + dist * 1.6);
+        let g = (v.gl * v.gl + v.gr * v.gr).sqrt() * (0.45 + 0.9 * near);
+        let theta = (pan + 1.0) * std::f32::consts::FRAC_PI_4;
+        let (sl, sr) = (g * theta.cos(), g * theta.sin());
+        (v.gl + (sl - v.gl) * l.amount, v.gr + (sr - v.gr) * l.amount)
     }
 
     /// Mezcla el siguiente bloque. Llamar desde el hilo de audio o en bucle
@@ -367,7 +435,11 @@ impl Engine {
             *s = [0.0, 0.0];
         }
         let clock = self.clock;
+        let gains: Vec<(f32, f32)> = self.voices.iter().map(|v| self.spatial(v)).collect();
+        let mut vi = 0;
         self.voices.retain_mut(|v| {
+            let (gl, gr) = gains[vi];
+            vi += 1;
             if v.start >= block_end {
                 return true;
             }
@@ -378,8 +450,8 @@ impl Engine {
             let o = from - clock;
             for k in 0..count {
                 let s = pcm_f32(v.buf[off + k]);
-                out[o + k][0] += s[0] * v.gl;
-                out[o + k][1] += s[1] * v.gr;
+                out[o + k][0] += s[0] * gl;
+                out[o + k][1] += s[1] * gr;
             }
             off + count < v.buf.len()
         });

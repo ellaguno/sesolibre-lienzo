@@ -92,7 +92,10 @@ impl Default for DrawState {
                 View::Dibujo
             },
             layer: Layer::Agua,
-            contemplate: false,
+            // LIENZO_CONTEMPLATE=1 arranca contemplando (pruebas y capturas)
+            contemplate: std::env::var("LIENZO_CONTEMPLATE")
+                .map(|v| v == "1")
+                .unwrap_or(false),
             depth: 15.0,
             points: vec![],
             started: None,
@@ -118,6 +121,7 @@ pub fn brush_name(b: Brush) -> &'static str {
         Brush::Arcoiris => "Arcoíris",
         Brush::Elevar => "Elevar",
         Brush::Hundir => "Hundir",
+        Brush::Ruta => "Ruta",
     }
 }
 

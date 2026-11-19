@@ -49,10 +49,12 @@ pub enum Brush {
     Elevar,
     /// Familia Relieve: hunde el fondo (fosas, cuevas).
     Hundir,
+    /// La ruta de buceo: por dónde nada la cámara al contemplar.
+    Ruta,
 }
 
 impl Brush {
-    pub const ALL: [Brush; 14] = [
+    pub const ALL: [Brush; 15] = [
         Brush::Kelp,
         Brush::Coral,
         Brush::Anemona,
@@ -67,6 +69,7 @@ impl Brush {
         Brush::Arcoiris,
         Brush::Elevar,
         Brush::Hundir,
+        Brush::Ruta,
     ];
 
     /// Pinceles que usan el color elegido en la paleta.
