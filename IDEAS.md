@@ -39,3 +39,7 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 ## Plataformas
 - iPhone / iPad (requiere Mac). — 2026-11-18
 - Versión web completa para crear, no solo para ver. — 2026-11-18
+
+## Apps hermanas
+- **Onda** (nombre provisional): paisajes sonoros con propósito (dormir, concentrar, meditar, respirar) con pantalla apagada, sala *Exploración* para lo alternativo, core compartible con Somnia y Mind. Análisis y plan en [propuestas/onda/DISEÑO.md](propuestas/onda/DISEÑO.md). — 2026-11-19, Eduardo
+- Exportar una obra de Lienzo como capa `ambiente` de Onda (paisaje para dormir). — 2026-11-19, propuesta Onda §10
