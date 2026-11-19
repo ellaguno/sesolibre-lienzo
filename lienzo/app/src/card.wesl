@@ -38,6 +38,10 @@ fn waves(p: vec2<f32>, t: f32) -> f32 {
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if material.extra.z > 1.5 {
+        // Desde arriba (vista de dibujo) la superficie no existe: el papel.
+        if view.world_position.y > in.world_position.y + 0.05 {
+            discard;
+        }
         // Superficie desde abajo. Mirando casi a plomo se ve el cielo por la
         // ventana de Snell (~48°); más allá, el agua se refleja a sí misma.
         // El oleaje mueve el borde de la ventana y riza la luz.
