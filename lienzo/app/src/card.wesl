@@ -46,7 +46,12 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if material.params.y > 0.5 {
         let d = distance(in.world_position.xyz, view.world_position) * material.params.x;
         let f = 1.0 - exp(-d * d);
-        c = vec4<f32>(mix(c.rgb, material.fog_color.rgb, f), c.a);
+        if material.params.z > 0.5 {
+            // la luz aditiva no se tiñe de niebla: se apaga con la distancia
+            c = vec4<f32>(c.rgb * (1.0 - f), c.a);
+        } else {
+            c = vec4<f32>(mix(c.rgb, material.fog_color.rgb, f), c.a);
+        }
     }
     if material.params.z > 0.5 {
         // Aditivo de verdad: Bevy mezcla "Add" como premultiplicado
