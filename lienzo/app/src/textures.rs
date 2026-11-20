@@ -50,17 +50,12 @@ pub fn caustic_tile() -> Image {
     };
     // dos redes de celdas de distinto tamaño, con puntos muy desordenados:
     // la mezcla rompe cualquier cuadrícula
-    let layer = |cells: usize, rnd: &mut dyn FnMut() -> f32| -> Vec<(f32, f32)> {
-        (0..cells * cells)
-            .map(|i| {
-                let cx = (i % cells) as f32 / cells as f32;
-                let cy = (i / cells) as f32 / cells as f32;
-                (cx + rnd() * 1.3 / cells as f32, cy + rnd() * 1.3 / cells as f32)
-            })
-            .collect()
+    // puntos al azar por todo el mosaico (no por celda): tamaños desiguales
+    let layer = |n: usize, rnd: &mut dyn FnMut() -> f32| -> Vec<(f32, f32)> {
+        (0..n).map(|_| (rnd(), rnd())).collect()
     };
-    let coarse = layer(5, &mut rnd);
-    let fine = layer(9, &mut rnd);
+    let coarse = layer(22, &mut rnd);
+    let fine = layer(70, &mut rnd);
     let edge_of = |u: f32, v: f32, pts: &[(f32, f32)], cells: f32| -> f32 {
         let mut f1 = 9.0f32;
         let mut f2 = 9.0f32;
@@ -84,8 +79,8 @@ pub fn caustic_tile() -> Image {
         (f2 - f1) * cells
     };
     let mut img = make(N as u32, N as u32, move |u, v| {
-        let e1 = edge_of(u, v, &coarse, 5.0);
-        let e2 = edge_of(u, v, &fine, 9.0);
+        let e1 = edge_of(u, v, &coarse, 4.7);
+        let e2 = edge_of(u, v, &fine, 8.4);
         let line = |e: f32| (1.0 - e * 3.4).clamp(0.0, 1.0).powf(2.4);
         let glow = |e: f32| (1.0 - e * 1.2).clamp(0.0, 1.0).powf(3.0) * 0.22;
         let c = (0.4 * (line(e1) + glow(e1)) + 0.75 * (line(e2) + glow(e2))).min(1.0);
@@ -116,8 +111,7 @@ pub fn blob() -> Image {
         let edge = (1.0 - d).clamp(0.0, 1.0);
         // más pigmento en el borde, como la acuarela al secarse
         let a = (edge.powf(0.6) * 0.75 + (edge * (1.0 - edge) * 4.0).powf(2.0) * 0.35).min(1.0);
-        let grain = 0.92 + 0.08 * (((u * 53.0).sin() * (v * 47.0).cos() * 13.0).fract());
-        [grain, grain, grain, a * 0.9]
+        [1.0, 1.0, 1.0, a * 0.85]
     })
 }
 
@@ -201,22 +195,23 @@ pub fn sand(color: [f32; 3]) -> Image {
         h = (h ^ (h >> 13)).wrapping_mul(1274126177);
         (h ^ (h >> 16)) as f32 / u32::MAX as f32
     };
-    let noise = move |x: f32, y: f32| -> f32 {
+    // ruido de valor *tileable*: la red de enteros se envuelve en el periodo
+    let noise = move |x: f32, y: f32, period: i32| -> f32 {
         let (xi, yi) = (x.floor() as i32, y.floor() as i32);
         let (fx, fy) = (x - xi as f32, y - yi as f32);
         let (sx, sy) = (fx * fx * (3.0 - 2.0 * fx), fy * fy * (3.0 - 2.0 * fy));
-        let a = hash(xi, yi) * (1.0 - sx) + hash(xi + 1, yi) * sx;
-        let b = hash(xi, yi + 1) * (1.0 - sx) + hash(xi + 1, yi + 1) * sx;
+        let w = |a: i32| a.rem_euclid(period);
+        let a = hash(w(xi), w(yi)) * (1.0 - sx) + hash(w(xi + 1), w(yi)) * sx;
+        let b = hash(w(xi), w(yi + 1)) * (1.0 - sx) + hash(w(xi + 1), w(yi + 1)) * sx;
         a * (1.0 - sy) + b * sy
     };
     make(512, 512, move |u, v| {
-        let n = 0.6 * noise(u * 12.0, v * 12.0)
-            + 0.3 * noise(u * 31.0, v * 31.0)
-            + 0.1 * noise(u * 90.0, v * 90.0);
-        let c =
-            ((u * 37.0 + v * 23.0).sin() * (u * 53.0 - v * 31.0).sin() * (u * 19.0 + 2.0).sin())
-                .powi(2);
-        let k = 0.75 + 0.35 * n + 0.45 * c;
+        // grano fino y ondulaciones suaves, sin manchas grandes en cuadrícula
+        let n = 0.25 * noise(u * 7.0, v * 7.0, 7)
+            + 0.35 * noise(u * 23.0, v * 23.0, 23)
+            + 0.25 * noise(u * 61.0, v * 61.0, 61)
+            + 0.15 * noise(u * 160.0, v * 160.0, 160);
+        let k = 0.86 + 0.28 * n;
         [color[0] * k, color[1] * k, color[2] * k, 1.0]
     })
 }

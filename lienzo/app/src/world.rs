@@ -102,7 +102,19 @@ pub fn setup(
     commands.insert_resource(ClearColor(lk.clear));
 
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
-    let _ = crate::material::CAUSTIC_TEX.set(images.add(textures::caustic_tile()));
+    let caustic_img = textures::caustic_tile();
+    if let Ok(path) = std::env::var("LIENZO_DUMP_CAUSTIC") {
+        if let Some(data) = caustic_img.data.as_ref() {
+            let w = caustic_img.width();
+            let h = caustic_img.height();
+            let mut ppm = format!("P6 {w} {h} 255\n").into_bytes();
+            for px in data.chunks(4) {
+                ppm.extend_from_slice(&px[..3]);
+            }
+            let _ = std::fs::write(path, ppm);
+        }
+    }
+    let _ = crate::material::CAUSTIC_TEX.set(images.add(caustic_img));
 
     // fondo: una esfera que envuelve todo, vista desde dentro, sin niebla.
     // Gire a donde gire la cámara, siempre hay agua.

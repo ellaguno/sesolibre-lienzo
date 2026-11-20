@@ -32,21 +32,23 @@ fn caustics(p: vec3<f32>, t: f32) -> f32 {
 // Cáusticas reales a dos lecturas: la textura celular se desplaza en dos
 // direcciones y se multiplica; el producto solo brilla donde ambas coinciden,
 // que es como se mueven las redes de luz en un fondo de arena.
-fn caustic_tex(p: vec2<f32>, t: f32) -> f32 {
-    let k = material.extra.y * 0.21;
-    let a = textureSample(caustic_texture, caustic_sampler, p * k + vec2<f32>(t * 0.013, t * 0.021)).r;
-    // la segunda lectura va girada y a otra escala: nada de cuadrícula
-    let q = vec2<f32>(p.x * 0.83 - p.y * 0.56, p.x * 0.56 + p.y * 0.83);
-    let b = textureSample(caustic_texture, caustic_sampler, q * k * 1.61 + vec2<f32>(-t * 0.017, t * 0.009) + vec2<f32>(0.37, 0.61)).r;
-    return min(a, b) * 1.4;
-}
-
-// Oleaje lento de la superficie: tres ondas que se cruzan, en [-1, 1].
 fn waves(p: vec2<f32>, t: f32) -> f32 {
     let a = sin(p.x * 0.9 + t * 0.35 + p.y * 0.3);
     let b = sin(p.y * 1.3 - t * 0.27 + p.x * 0.5);
     let c = sin((p.x - p.y) * 0.6 + t * 0.19);
     return (a + b + c) / 3.0;
+}
+
+fn caustic_tex(p0: vec2<f32>, t: f32) -> f32 {
+    let k = material.extra.y * 0.21;
+    // la red se ondula con el oleaje: corrientes, no un estampado fijo
+    let p = p0 + 0.6 * vec2<f32>(waves(p0 * 0.45, t * 0.7), waves(p0 * 0.45 + vec2<f32>(7.0, 3.0), t * 0.6));
+    // fract: la repetición no depende del sampler (en GLES se ignoraba)
+    let a = textureSample(caustic_texture, caustic_sampler, fract(p * k + vec2<f32>(t * 0.013, t * 0.021))).r;
+    // la segunda lectura va girada y a otra escala: nada de cuadrícula
+    let q = vec2<f32>(p.x * 0.83 - p.y * 0.56, p.x * 0.56 + p.y * 0.83);
+    let b = textureSample(caustic_texture, caustic_sampler, fract(q * k * 1.61 + vec2<f32>(-t * 0.017, t * 0.009) + vec2<f32>(0.37, 0.61))).r;
+    return min(a, b) * 1.4;
 }
 
 @fragment
@@ -85,7 +87,12 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let k = h * h * (3.0 - 2.0 * h);
         return vec4<f32>(mix(material.fog_color.rgb, material.color.rgb, k), 1.0);
     }
-    var c = material.color * textureSample(card_texture, card_sampler, in.uv);
+    // el relieve repite su arena sin fin (fract: el sampler no decide)
+    var uv = in.uv;
+    if material.extra.w > 0.5 {
+        uv = fract(in.uv);
+    }
+    var c = material.color * textureSample(card_texture, card_sampler, uv);
     if material.extra.z < -0.5 {
         // rayo de luz: un velo que se desvanece cuando se mira de canto (al
         // mirar al fondo no se ven franjas, solo cáusticas) y que no tiene
