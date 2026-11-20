@@ -39,3 +39,6 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 ## Plataformas
 - iPhone / iPad (requiere Mac). — 2026-11-18
 - Versión web completa para crear, no solo para ver. — 2026-11-18
+
+- **Distorsión del agua por corrientes** (Eduardo, 19 nov 2026): además de la ondulación de la red de cáusticas, que las cartas y el relieve se mezan con un campo de corrientes (desplazamiento en el vértice, barato en GLES), y en escritorio la refracción de pantalla completa.
+- **Barra de herramientas con iconos**: en vez de botones con texto, el icono es la propia imagen del elemento (y una tira de colores); en el móvil los botones de texto llenan la pantalla. Es parte de la interfaz táctil definitiva, a diseñar con Eduardo.
