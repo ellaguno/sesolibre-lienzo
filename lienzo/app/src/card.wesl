@@ -95,7 +95,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let facing = abs(dot(normalize(in.world_normal), to_cam / max(near, 0.001)));
         // y se disuelve si está encima de la cámara: nunca una barra en la cara
         // y desde fuera del agua (vista de dibujo) no existen
-        let under = smoothstep(5.0, 3.8, view.world_position.y);
+        let under = 0.35 + 0.65 * smoothstep(5.0, 3.8, view.world_position.y);
         c = vec4<f32>(c.rgb, c.a * smoothstep(0.15, 0.7, facing) * smoothstep(1.5, 7.0, near) * under);
     }
     if material.extra.w > 0.5 {
@@ -111,7 +111,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if caustic_strength > 0.001 {
         // más luz cerca de la superficie (y alta), casi nada en el abismo
         let height = clamp(in.world_position.y / 5.0, 0.0, 1.0);
-        let light = caustic_tex(in.world_position.xz, globals.time) * caustic_strength * (0.35 + 0.65 * height);
+        // y solo cerca: lejos la red se funde en un velo (y evita el moiré)
+        let dc = distance(in.world_position.xyz, view.world_position) * 0.055;
+        let near_c = exp(-dc * dc);
+        let light = caustic_tex(in.world_position.xz, globals.time) * caustic_strength * (0.35 + 0.65 * height) * near_c;
         c = vec4<f32>(c.rgb * (1.0 + light) + vec3<f32>(0.6, 0.8, 0.85) * light * 0.25, c.a);
     }
     if material.params.y > 0.5 {

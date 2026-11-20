@@ -77,6 +77,24 @@ impl SpriteMaterials {
     }
 }
 
+impl SpriteMaterials {
+    /// Material de haz de luz dibujado (compartido).
+    fn beam(
+        &mut self,
+        tex: &Handle<Image>,
+        materials: &mut Assets<CardMaterial>,
+    ) -> Handle<CardMaterial> {
+        self.glows
+            .entry([1, 2, 3])
+            .or_insert_with(|| {
+                let mut m = CardMaterial::glow(tex.clone(), [1.0, 0.96, 0.85], 0.3);
+                m.extra.z = -1.0;
+                materials.add(m)
+            })
+            .clone()
+    }
+}
+
 /// Proporción ancho/alto de cada sprite, medida al recortar.
 fn aspect(name: &str) -> f32 {
     match name {
@@ -419,29 +437,26 @@ pub fn spawn_stroke(
             }
         }
         Brush::Haz => {
-            // rayos verticales a lo largo del gesto, de la superficie hacia abajo
-            let mat = mats.glow([1.0, 0.95, 0.8], &common.ray_tex, materials);
+            // haces de sol a lo largo del gesto: nacen en la superficie, de
+            // cara a la cámara, y se funden como los rayos de ambiente
+            let mat = mats.beam(&common.ray_tex, materials);
             for (k, (p, _)) in along(stroke, 0.7).into_iter().enumerate() {
-                let w = 0.5 + 0.7 * h(k);
-                let height = 9.0 + 3.0 * h(k + 7);
-                let base = Vec3::new(p.x, 5.0, p.z);
+                let w = 0.8 + 1.2 * h(k);
+                let height = 11.0 + 3.0 * h(k + 7);
                 commands.spawn((
                     Mesh3d(common.quad.clone()),
                     MeshMaterial3d(mat.clone()),
-                    Transform::from_translation(base - Vec3::Y * height * 0.5)
-                        .with_rotation(Quat::from_rotation_z(-0.12 + 0.24 * h(k + 3)))
+                    Transform::from_xyz(p.x, 5.0 - height * 0.5, p.z)
                         .with_scale(Vec3::new(w, height, 1.0)),
-                    Card {
-                        stroke: index,
-                        kind: Motion::Sway,
+                    crate::world::Ray {
+                        tilt: 0.10 + 0.12 * h(k + 3),
                         phase: h(k + 9) * 6.28,
-                        base: base - Vec3::Y * height * 0.5,
-                        flip: false,
-                        pulse: 0.0,
-                        size: Vec2::new(w, height),
+                        width: w,
+                        x: p.x,
+                        z: p.z,
+                        drawn: true,
                     },
                     Owned(index),
-                    Billboard,
                 ));
             }
         }

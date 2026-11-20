@@ -35,11 +35,13 @@ pub struct Billboard;
 
 #[derive(Component)]
 pub struct Ray {
-    tilt: f32,
-    phase: f32,
-    width: f32,
-    x: f32,
-    z: f32,
+    pub tilt: f32,
+    pub phase: f32,
+    pub width: f32,
+    pub x: f32,
+    pub z: f32,
+    /// Dibujado con el pincel Haz: no se apaga en la vista de dibujo.
+    pub drawn: bool,
 }
 
 #[derive(Resource)]
@@ -177,6 +179,7 @@ pub fn setup(
                 width: w,
                 x,
                 z,
+                drawn: false,
             },
         ));
     }
@@ -257,11 +260,16 @@ pub fn refraction(
 /// Los rayos oscilan despacio, como la luz que atraviesa un oleaje lento.
 pub fn sway_rays(
     time: Res<Time>,
+    st: Res<crate::draw::DrawState>,
+    mut fade: Local<f32>,
     cam: Query<&Transform, (With<Camera3d>, Without<Ray>)>,
     mut q: Query<(&mut Transform, &Ray)>,
 ) {
     let Ok(cam) = cam.single() else { return };
     let t = time.elapsed_secs();
+    // en la vista de dibujo (el papel) no hay rayos: se funden al cambiar
+    let goal = if st.view == crate::draw::View::Dibujo { 0.0 } else { 1.0 };
+    *fade += (goal - *fade) * (1.0 - (-2.5 * time.delta_secs()).exp());
     for (mut tf, r) in q.iter_mut() {
         // de cara a la cámara (solo giro en Y), con su inclinación propia que
         // respira con el oleaje
@@ -271,7 +279,8 @@ pub fn sway_rays(
         tf.rotation = Quat::from_euler(EulerRot::YXZ, yaw, 0.0, a);
         // el ancho parpadea despacio: la luz que concentra el oleaje
         let flicker = 0.75 + 0.35 * (0.5 + 0.5 * (t * 0.43 + r.phase).sin()) * (0.5 + 0.5 * (t * 0.29 + r.phase * 1.7).cos());
-        tf.scale.x = r.width * flicker;
+        let f = if r.drawn { 1.0 } else { (*fade).max(0.001) };
+        tf.scale.x = r.width * flicker * f;
         tf.translation.x = r.x + 0.25 * (t * 0.11 + r.phase).sin();
         tf.translation.z = r.z;
     }

@@ -83,14 +83,25 @@ pub fn caustic_tile() -> Image {
         }
         (f2 - f1) * cells
     };
-    make(N as u32, N as u32, move |u, v| {
+    let mut img = make(N as u32, N as u32, move |u, v| {
         let e1 = edge_of(u, v, &coarse, 5.0);
         let e2 = edge_of(u, v, &fine, 9.0);
         let line = |e: f32| (1.0 - e * 3.4).clamp(0.0, 1.0).powf(2.4);
         let glow = |e: f32| (1.0 - e * 1.2).clamp(0.0, 1.0).powf(3.0) * 0.22;
-        let c = (0.65 * (line(e1) + glow(e1)) + 0.55 * (line(e2) + glow(e2))).min(1.0);
+        let c = (0.4 * (line(e1) + glow(e1)) + 0.75 * (line(e2) + glow(e2))).min(1.0);
         [c, c, c, 1.0]
-    })
+    });
+    // se muestrea por coordenadas de mundo: debe repetirse sin fin
+    use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
+    img.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        address_mode_u: ImageAddressMode::Repeat,
+        address_mode_v: ImageAddressMode::Repeat,
+        mag_filter: ImageFilterMode::Linear,
+        min_filter: ImageFilterMode::Linear,
+        mipmap_filter: ImageFilterMode::Linear,
+        ..default()
+    });
+    img
 }
 
 /// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
