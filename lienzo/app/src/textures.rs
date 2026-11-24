@@ -282,6 +282,11 @@ pub fn water_icon(top: [f32; 3], bottom: [f32; 3]) -> Image {
     })
 }
 
+/// Blanco liso (para materiales que solo usan el color).
+pub fn white() -> Image {
+    make(4, 4, |_, _| [1.0, 1.0, 1.0, 1.0])
+}
+
 /// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
 /// color lo pone el material).
 pub fn blob() -> Image {
@@ -343,7 +348,11 @@ pub fn ray() -> Image {
         let d = (u - 0.5) * 2.0;
         let edge = (-d * d * 5.0).exp() - (-5.0f32).exp();
         // nace a plena luz en la superficie y se disuelve mucho antes del fondo
-        let fall = (1.0 - (v / 0.34).clamp(0.0, 1.0)).powf(1.5);
+        // se enciende suavemente bajo la superficie (nunca un corte arriba) y
+        // se disuelve mucho antes del fondo
+        let top = (v / 0.12).clamp(0.0, 1.0);
+        let top = top * top * (3.0 - 2.0 * top);
+        let fall = top * (1.0 - ((v - 0.12) / 0.30).clamp(0.0, 1.0)).powf(1.5);
         let a = (edge * fall).max(0.0);
         [0.55 * a, 0.8 * a, 0.9 * a, a]
     })

@@ -8,6 +8,7 @@ mod gallery;
 mod input;
 mod material;
 mod orbit;
+mod paper;
 mod terrain;
 mod textures;
 mod ui;
@@ -66,6 +67,7 @@ impl DebugFlags {
 }
 
 fn debug_flags() -> DebugFlags {
+    #[allow(unused_mut)]
     let mut text = std::env::var("LIENZO_DEBUG").unwrap_or_default();
     #[cfg(target_os = "android")]
     if let Some(p) = bevy::android::ANDROID_APP
@@ -171,11 +173,12 @@ pub fn run() -> anyhow::Result<()> {
     #[cfg(target_os = "android")]
     let (asset_plugin, bank) = (AssetPlugin::default(), SampleBank::load_from(&ApkSource)?);
     let bank = Arc::new(bank);
-    let path = std::env::args().nth(1).map(PathBuf::from);
-    let scene = match &path {
-        Some(p) if p.exists() => Scene::from_json(&std::fs::read_to_string(p)?)?,
-        Some(_) => Scene::new(7),
-        None => Scene::demo(),
+    let arg = std::env::args().nth(1).map(PathBuf::from);
+    let (scene, path) = match &arg {
+        Some(p) if p.exists() => (Scene::from_json(&std::fs::read_to_string(p)?)?, arg.clone()),
+        Some(_) => (Scene::new(7), arg.clone()),
+        // sin argumento: la obra en curso, o un lienzo en blanco la primera vez
+        None => gallery::startup_scene(),
     };
 
     let link = audio::start(bank.clone(), scene.clone())?;
@@ -233,6 +236,7 @@ pub fn run() -> anyhow::Result<()> {
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
         .init_resource::<ui::Swipe>()
+        .init_resource::<paper::Paper>()
         .add_systems(
             Startup,
             (
@@ -253,6 +257,8 @@ pub fn run() -> anyhow::Result<()> {
                     input::gather,
                     gallery::keys,
                     gallery::apply,
+                    gallery::autosave,
+                    paper::ease,
                     gallery::refresh,
                     draw::keys,
                     draw::draw,

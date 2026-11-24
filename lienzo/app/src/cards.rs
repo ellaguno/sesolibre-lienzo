@@ -88,7 +88,7 @@ impl SpriteMaterials {
             .entry([1, 2, 3])
             .or_insert_with(|| {
                 let mut m = CardMaterial::glow(tex.clone(), [1.0, 0.96, 0.85], 0.3);
-                m.extra.z = -1.0;
+                m.extra.z = -2.0;
                 materials.add(m)
             })
             .clone()

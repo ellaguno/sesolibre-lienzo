@@ -3,7 +3,6 @@
 //! caliente retiñe todo lo que ya está en escena.
 
 use crate::material::CardMaterial;
-use crate::textures;
 use crate::world::Common;
 use crate::Obra;
 use bevy::prelude::*;
@@ -100,47 +99,63 @@ pub fn raw_look(w: Water) -> Look {
 
 /// El agua que está aplicada en escena ahora mismo.
 #[derive(Resource, Default)]
-pub struct Applied(pub Option<Water>);
+pub struct Applied(pub Option<(Water, i32, usize)>);
 
 /// Si la obra cambió de agua, retiñe: fondo, arena, niebla de todos los
 /// materiales, rayos, partículas y color de limpieza.
 pub fn apply(
     flags: Res<crate::DebugFlags>,
     obra: Res<Obra>,
+    paper: Res<crate::paper::Paper>,
     mut applied: ResMut<Applied>,
     common: Res<Common>,
     mut materials: ResMut<Assets<CardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
     mut clear: ResMut<ClearColor>,
 ) {
     let w = obra.scene.water;
-    if applied.0 == Some(w) {
+    let f = paper.f;
+    // también cuando hay materiales nuevos (trazos recién dibujados)
+    let key = (w, (f * 400.0) as i32, materials.len());
+    if applied.0 == Some(key) {
         return;
     }
-    applied.0 = Some(w);
+    applied.0 = Some(key);
     let lk = look(w);
-    clear.0 = lk.clear;
-    let fog: LinearRgba = lk.fog.into();
+    let paper = crate::paper::PAPER;
+    let mix = crate::paper::mix;
+    let wet = 1.0 - f;
+    let fog_rgb = mix([lk.fog.to_srgba().red, lk.fog.to_srgba().green, lk.fog.to_srgba().blue], paper, f);
+    let fog: LinearRgba = Color::srgb(fog_rgb[0], fog_rgb[1], fog_rgb[2]).into();
+    let clear_rgb = mix([lk.clear.to_srgba().red, lk.clear.to_srgba().green, lk.clear.to_srgba().blue], paper, f);
+    clear.0 = Color::srgb(clear_rgb[0], clear_rgb[1], clear_rgb[2]);
+    let caustics = if flags.has("no_caustics") { 0.0 } else { lk.caustics * wet };
     for (_, m) in materials.iter_mut() {
         m.fog_color = fog;
-        m.params.x = lk.fog_density;
-        m.extra.x = if flags.has("no_caustics") { 0.0 } else { lk.caustics };
+        m.params.x = lk.fog_density * wet;
+        m.extra.x = caustics;
     }
     if let Some(mut m) = materials.get_mut(&common.backdrop) {
-        m.color = Color::srgb(lk.top[0], lk.top[1], lk.top[2]).into();
+        let top = mix(lk.top, paper, f);
+        m.color = Color::srgb(top[0], top[1], top[2]).into();
     }
     if let Some(mut m) = materials.get_mut(&common.sand) {
-        m.texture = images.add(textures::sand(lk.sand));
+        // la textura es gris; el tinte va en el color: arena o papel
+        let tint = mix(lk.sand, paper, f);
+        m.color = Color::srgb(tint[0], tint[1], tint[2]).into();
         // el suelo se pierde antes en la niebla: a media distancia ya es agua
-        m.params.x = lk.fog_density * 1.9;
+        m.params.x = lk.fog_density * 1.9 * wet;
     }
     if let Some(mut m) = materials.get_mut(&common.surface) {
         m.color = Color::srgb(lk.sky[0], lk.sky[1], lk.sky[2]).into();
     }
     if let Some(mut m) = materials.get_mut(&common.ray) {
-        m.color = Color::srgba(1.0, 1.0, 1.0, lk.rays).into();
+        m.color = Color::srgba(1.0, 1.0, 1.0, lk.rays * wet).into();
     }
     if let Some(mut m) = materials.get_mut(&common.dot) {
-        m.color = Color::srgba(1.0, 1.0, 1.0, lk.particles).into();
+        m.color = Color::srgba(1.0, 1.0, 1.0, lk.particles * wet).into();
+    }
+    if let Some(mut m) = materials.get_mut(&common.frame) {
+        // el borde del lienzo solo existe sobre el papel
+        m.color = Color::srgba(0.45, 0.40, 0.34, 0.55 * f).into();
     }
 }

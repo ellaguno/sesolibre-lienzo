@@ -83,7 +83,11 @@ fn scan() -> Vec<Entry> {
     if let Ok(rd) = std::fs::read_dir(obras_dir()) {
         for e in rd.flatten() {
             let p = e.path();
-            if p.extension().map(|x| x == "json").unwrap_or(false) {
+            let hidden = p
+                .file_name()
+                .map(|n| n.to_string_lossy().starts_with('.'))
+                .unwrap_or(true);
+            if !hidden && p.extension().map(|x| x == "json").unwrap_or(false) {
                 if let Ok(s) = std::fs::read_to_string(&p) {
                     if let Ok(sc) = Scene::from_json(&s) {
                         let title = if sc.title.is_empty() {
@@ -107,6 +111,85 @@ fn scan() -> Vec<Entry> {
         mb.cmp(&ma)
     });
     out
+}
+
+/// La obra en curso se guarda sola en `.actual.json` (y la ruta de galería
+/// de la que viene, si la hay, en `.actual.path`): al volver se continúa.
+fn actual_json() -> PathBuf {
+    obras_dir().join(".actual.json")
+}
+
+fn actual_path() -> PathBuf {
+    obras_dir().join(".actual.path")
+}
+
+/// Escena con la que arranca la app: la obra en curso si la hay; si no (la
+/// primera vez), un lienzo en blanco, y la demo queda en la galería.
+pub fn startup_scene() -> (Scene, Option<PathBuf>) {
+    let dir = obras_dir();
+    if let Some(sc) = std::fs::read_to_string(actual_json())
+        .ok()
+        .and_then(|s| Scene::from_json(&s).ok())
+    {
+        let path = std::fs::read_to_string(actual_path())
+            .ok()
+            .map(|p| PathBuf::from(p.trim()))
+            .filter(|p| p.exists());
+        return (sc, path);
+    }
+    // primera vez: la demo pasa a la galería y se empieza en blanco
+    let _ = std::fs::create_dir_all(&dir);
+    let demo = dir.join("demo.json");
+    if !demo.exists() {
+        let mut d = Scene::demo();
+        d.title = "Demo".into();
+        let _ = std::fs::write(&demo, d.to_json());
+    }
+    let mut sc = Scene::new(new_seed());
+    sc.title = String::new();
+    (sc, None)
+}
+
+/// Autoguardado: en cuanto la obra cambia (y tras un respiro) se escribe
+/// `.actual.json`; si la obra viene de la galería, también se actualiza ahí.
+/// Un niño no tiene que acordarse de guardar.
+pub fn autosave(
+    time: Res<Time>,
+    mut obra: ResMut<Obra>,
+    mut last: Local<(String, f32, bool)>,
+) {
+    let key = format!(
+        "{}|{:?}|{}|{}|{:?}",
+        obra.scene.strokes.len(),
+        obra.scene.water,
+        obra.scene.title,
+        obra.scene.seed,
+        obra.path
+    );
+    let now = time.elapsed_secs();
+    let (ref mut last_key, ref mut since, ref mut pending) = *last;
+    if *last_key != key {
+        *last_key = key;
+        *since = now;
+        *pending = true;
+        return;
+    }
+    if *pending && now - *since > 1.5 {
+        *pending = false;
+        let dir = obras_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::write(actual_json(), obra.scene.to_json());
+        match &obra.path {
+            Some(p) => {
+                let _ = std::fs::write(actual_path(), p.to_string_lossy().as_bytes());
+                let _ = std::fs::write(p, obra.scene.to_json());
+            }
+            None => {
+                let _ = std::fs::remove_file(actual_path());
+            }
+        }
+        obra.dirty = false;
+    }
 }
 
 /// Guarda la obra. Sin ruta, inventa una a partir del título.

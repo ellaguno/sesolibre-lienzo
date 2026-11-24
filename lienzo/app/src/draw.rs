@@ -78,12 +78,30 @@ pub struct DrawState {
     /// Hasta cuándo (segundos de app) se muestra el botón de salir en contemplación.
     pub exit_until: f32,
     last_tap: f32,
+    /// Vista desde la que se entró a contemplar: al salir se vuelve a ella.
+    before: View,
+}
+
+impl DrawState {
+    /// Entra o sale de la contemplación. Contemplar es bucear; al salir se
+    /// vuelve a la vista en la que se estaba (el papel, normalmente).
+    pub fn toggle_contemplate(&mut self) {
+        if self.contemplate {
+            self.contemplate = false;
+            self.view = self.before;
+        } else {
+            self.before = self.view;
+            self.contemplate = true;
+            self.view = View::Buceo;
+        }
+        self.title_dirty = true;
+    }
 }
 
 impl Default for DrawState {
     fn default() -> Self {
         DrawState {
-            brush: Brush::Kelp,
+            brush: Brush::Color,
             swatch: 4,
             // LIENZO_VIEW=buceo arranca buceando (pruebas y capturas)
             view: if std::env::var("LIENZO_VIEW")
@@ -106,6 +124,7 @@ impl Default for DrawState {
             title_dirty: true,
             exit_until: 0.0,
             last_tap: -10.0,
+            before: View::Dibujo,
         }
     }
 }
@@ -158,11 +177,7 @@ pub fn keys(
         }
     }
     if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::Escape) {
-        st.contemplate = !st.contemplate;
-        if st.contemplate {
-            st.view = View::Buceo;
-        }
-        st.title_dirty = true;
+        st.toggle_contemplate();
     }
     if keys.just_pressed(KeyCode::KeyV) {
         st.view = match st.view {
@@ -383,8 +398,7 @@ pub fn touch(
     // salen de la contemplación
     let now = time.elapsed_secs();
     if now - st.last_tap < 0.45 {
-        st.contemplate = false;
-        st.title_dirty = true;
+        st.toggle_contemplate();
         st.last_tap = -10.0;
         return;
     }

@@ -109,7 +109,9 @@ pub fn control(
     } else {
         (o.dive_pitch, o.distance, Vec3::new(0.0, 2.2, 0.0))
     };
-    let k = 1.0 - (-3.0 * dt).exp();
+    // al entrar a contemplar la cámara baja despacio: es un viaje
+    let rate = if st.contemplate { 1.0 } else { 3.0 };
+    let k = 1.0 - (-rate * dt).exp();
     o.pitch += (pitch_goal - o.pitch) * k;
     let t_now = o.target;
     o.target = t_now + (target_goal - t_now) * k;

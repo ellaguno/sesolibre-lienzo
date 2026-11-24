@@ -44,7 +44,7 @@ pub struct CardMaterial {
 pub static CAUSTIC_TEX: std::sync::OnceLock<Handle<Image>> = std::sync::OnceLock::new();
 
 impl CardMaterial {
-    fn new(texture: Handle<Image>, color: Color, alpha: AlphaMode, fog: bool) -> Self {
+    pub fn new(texture: Handle<Image>, color: Color, alpha: AlphaMode, fog: bool) -> Self {
         Self::with_caustics(texture, color, alpha, fog, 0.0)
     }
 

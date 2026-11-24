@@ -73,6 +73,16 @@ const BTN_ON: Color = Color::srgba(1.0, 1.0, 1.0, 0.24);
 const BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.22);
 const BORDER_ON: Color = Color::srgba(1.0, 1.0, 1.0, 0.65);
 const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
+// Sobre el papel la interfaz es tinta: lo blanco no se ve.
+const BTN_INK: Color = Color::srgba(0.25, 0.18, 0.10, 0.06);
+const BTN_INK_ON: Color = Color::srgba(0.25, 0.18, 0.10, 0.20);
+const BORDER_INK: Color = Color::srgba(0.30, 0.22, 0.14, 0.35);
+const BORDER_INK_ON: Color = Color::srgba(0.30, 0.22, 0.14, 0.85);
+const TXT_INK: Color = Color::srgba(0.28, 0.21, 0.13, 0.92);
+
+/// Marca los textos e iconos de línea que cambian de blanco a tinta.
+#[derive(Component)]
+pub struct Inkable;
 
 #[derive(Component)]
 pub struct WaterRow;
@@ -127,8 +137,27 @@ pub fn setup(
     let gen = |images: &mut Assets<Image>, kind: &str| -> (Handle<Image>, f32) {
         (images.add(textures::icon(kind)), 1.0)
     };
+    // orden del renglón: primero color y vida (lo que un niño usa de entrada);
+    // luz, relieve y ruta, al final
+    const ORDER: [Brush; 15] = [
+        Brush::Color,
+        Brush::Kelp,
+        Brush::Coral,
+        Brush::Anemona,
+        Brush::Cardumen,
+        Brush::Medusa,
+        Brush::Burbujas,
+        Brush::Ballena,
+        Brush::Barco,
+        Brush::Farol,
+        Brush::Haz,
+        Brush::Arcoiris,
+        Brush::Elevar,
+        Brush::Hundir,
+        Brush::Ruta,
+    ];
     let mut icons: Vec<(Brush, Handle<Image>, f32)> = Vec::new();
-    for b in Brush::ALL.iter() {
+    for b in ORDER.iter() {
         let (img, aspect) = match b {
             Brush::Kelp => sprite("kelp_hoja"),
             Brush::Coral => sprite("coral_a_1"),
@@ -330,6 +359,7 @@ pub fn setup(
                 ))
                 .with_children(|c| {
                     c.spawn((
+                        Inkable,
                         bevy::picking::Pickable::IGNORE,
                         ImageNode::new(images.add(textures::tool_icon(kind))).with_color(TXT),
                         Node {
@@ -413,15 +443,18 @@ pub fn setup(
                 position_type: PositionType::Absolute,
                 left: Val::Px(14.0),
                 top: Val::Px(12.0),
+                column_gap: Val::Px(8.0),
                 display: Display::None,
                 ..default()
             },
         ))
         .with_children(|row| {
             tool(row, &font.0, Action::Contemplate, images.add(textures::tool_icon("salir")), "salir");
+            tool(row, &font.0, Action::Gallery, images.add(textures::tool_icon("galeria")), "galería");
         });
     commands.spawn((
         Hint,
+        Inkable,
         // la ayuda no intercepta toques: tapaba la fila de aguas en el teléfono
         bevy::picking::Pickable::IGNORE,
         Node {
@@ -483,6 +516,7 @@ fn tool(
     ))
     .with_children(|c| {
         c.spawn((
+            Inkable,
             bevy::picking::Pickable::IGNORE,
             ImageNode::new(img).with_color(TXT),
             Node {
@@ -492,6 +526,7 @@ fn tool(
             },
         ));
         c.spawn((
+            Inkable,
             bevy::picking::Pickable::IGNORE,
             Text::new(label.to_string()),
             TextFont {
@@ -562,13 +597,7 @@ pub fn on_click(
                 st.title_dirty = true;
             }
         }
-        Action::Contemplate => {
-            st.contemplate = !st.contemplate;
-            if st.contemplate {
-                st.view = View::Buceo;
-            }
-            st.title_dirty = true;
-        }
+        Action::Contemplate => st.toggle_contemplate(),
         Action::View(v) => {
             st.view = *v;
             st.title_dirty = true;
@@ -650,6 +679,9 @@ pub struct Panels<'w, 's> {
     palette: Query<'w, 's, &'static ComputedNode, With<PaletteRoot>>,
     brush_row: Query<'w, 's, &'static ComputedNode, With<BrushRow>>,
     windows: Query<'w, 's, &'static Window, With<bevy::window::PrimaryWindow>>,
+    paper: Res<'w, crate::paper::Paper>,
+    ink_text: Query<'w, 's, &'static mut TextColor, With<Inkable>>,
+    ink_img: Query<'w, 's, &'static mut ImageNode, With<Inkable>>,
 }
 
 pub fn refresh(
@@ -667,7 +699,25 @@ pub fn refresh(
     mut p: Panels,
     mut hint_since: Local<f32>,
     mut hint_last: Local<String>,
+    mut ink_last: Local<Option<bool>>,
 ) {
+    // tinta sobre papel, blanco bajo el agua
+    let ink = p.paper.f > 0.5;
+    if *ink_last != Some(ink) {
+        *ink_last = Some(ink);
+        let c = if ink { TXT_INK } else { TXT };
+        for mut t in p.ink_text.iter_mut() {
+            t.0 = c;
+        }
+        for mut i in p.ink_img.iter_mut() {
+            i.color = c;
+        }
+    }
+    let (btn, btn_on, bord, bord_on) = if ink {
+        (BTN_INK, BTN_INK_ON, BORDER_INK, BORDER_INK_ON)
+    } else {
+        (BTN, BTN_ON, BORDER, BORDER_ON)
+    };
     // flechas de "hay más pinceles": según el desplazamiento real del renglón
     let (over, sx) = p
         .brush_row
@@ -714,9 +764,9 @@ pub fn refresh(
             Action::Undo | Action::Gallery | Action::ScrollRow(_) => false,
         };
         if !matches!(action, Action::Swatch(_) | Action::ScrollRow(_)) {
-            bg.0 = if on { BTN_ON } else { BTN };
+            bg.0 = if on { btn_on } else { btn };
         }
-        *border = BorderColor::all(if on { BORDER_ON } else { BORDER });
+        *border = BorderColor::all(if on { bord_on } else { bord });
     }
     for mut node in p.root.iter_mut() {
         node.display = if st.contemplate {
@@ -774,32 +824,27 @@ pub fn refresh(
                 format!("{} (T renombra)", crate::gallery::title_of(&obra))
             }
         };
-        let s = if st.contemplate {
-            format!(
-                "contemplación{SEP}{} trazos{SEP}toca un elemento para que actúe{SEP}A o Esc vuelve a dibujar",
-                obra.scene.strokes.len()
-            )
-        } else {
-            let ayuda = if cfg!(target_os = "android") {
-                "un dedo dibuja{SEP}dos dedos orbitan"
-            } else {
-                "[ ] capa o plano{SEP}V vista{SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}C vaciar{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galería{SEP}A contemplar"
-            }
-            .replace("{SEP}", SEP);
-            match st.view {
-                View::Dibujo => format!(
-                    "{}{SEP}capa: {}{SEP}{ayuda}",
-                    brush_name(st.brush),
-                    st.layer.name()
-                ),
-                View::Buceo => format!(
-                    "{}{SEP}plano a {:.0}{SEP}{ayuda}",
-                    brush_name(st.brush),
-                    st.depth
-                ),
-            }
+        // sobre el papel no hay texto: se dibuja y ya. Al bucear, en
+        // escritorio, los atajos; en el teléfono, nada.
+        let s = match st.view {
+            View::Dibujo => String::new(),
+            View::Buceo if cfg!(target_os = "android") => String::new(),
+            View::Buceo => format!(
+                "{}{SEP}plano a {:.0}{SEP}V vista{SEP}izquierdo dibuja{SEP}derecho orbita{SEP}Z deshacer{SEP}S guardar{SEP}E exportar audio{SEP}N nueva{SEP}G galería{SEP}A contemplar",
+                brush_name(st.brush),
+                st.depth
+            ),
         };
-        let s = format!("{titulo}\n{s}\n{}", gallery.status);
+        let titulo = if cfg!(target_os = "android") && !gallery.editing_title {
+            String::new()
+        } else {
+            titulo
+        };
+        let s = [titulo, s, gallery.status.clone()]
+            .into_iter()
+            .filter(|l| !l.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
         if *hint_last != s {
             *hint_last = s.clone();
             text.0 = s;

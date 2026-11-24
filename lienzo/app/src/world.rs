@@ -58,6 +58,8 @@ pub struct Common {
     pub sand: Handle<CardMaterial>,
     pub surface: Handle<CardMaterial>,
     pub ray: Handle<CardMaterial>,
+    /// El borde del lienzo (solo visible sobre el papel).
+    pub frame: Handle<CardMaterial>,
 }
 
 pub fn setup(
@@ -133,7 +135,31 @@ pub fn setup(
     }
 
     // suelo
-    let sand = materials.add(CardMaterial::opaque(images.add(textures::sand(lk.sand))));
+    // la arena es gris: el tinte (arena del agua o papel) lo pone water::apply
+    let mut sand_mat = CardMaterial::opaque(images.add(textures::sand([1.0, 1.0, 1.0])));
+    sand_mat.color = Color::srgb(lk.sand[0], lk.sand[1], lk.sand[2]).into();
+    let sand = materials.add(sand_mat);
+    // el borde del lienzo: cuatro listones finos sobre el papel
+    let frame = materials.add(CardMaterial::new(
+        images.add(textures::white()),
+        Color::srgba(0.45, 0.40, 0.34, 0.0),
+        bevy::prelude::AlphaMode::Blend,
+        false,
+    ));
+    for (x, z, w, h) in [
+        (0.0, -HALF_W, 2.0 * HALF_W + 0.08, 0.08),
+        (0.0, HALF_W, 2.0 * HALF_W + 0.08, 0.08),
+        (-HALF_W, 0.0, 0.08, 2.0 * HALF_W),
+        (HALF_W, 0.0, 0.08, 2.0 * HALF_W),
+    ] {
+        commands.spawn((
+            Mesh3d(quad.clone()),
+            MeshMaterial3d(frame.clone()),
+            Transform::from_xyz(x, 0.04, z)
+                .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+                .with_scale(Vec3::new(w, h, 1.0)),
+        ));
+    }
     // la superficie, vista desde abajo
     let surface = materials.add(CardMaterial::surface(
         images.add(textures::soft_dot()),
@@ -230,6 +256,7 @@ pub fn setup(
         sand,
         surface,
         ray,
+        frame,
     });
 }
 

@@ -81,7 +81,7 @@ pub fn swim(
     }
     dive.idle += time.delta_secs();
     if !dive.active {
-        if dive.idle < 8.0 {
+        if dive.idle < 4.0 {
             return;
         }
         dive.active = true;

@@ -135,7 +135,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let facing = abs(dot(normalize(in.world_normal), to_cam / max(near, 0.001)));
         // y se disuelve si está encima de la cámara: nunca una barra en la cara
         // y desde fuera del agua (vista de dibujo) no existen
-        let under = 0.35 + 0.65 * smoothstep(5.0, 3.8, view.world_position.y);
+        // los de ambiente (extra.z = -1) no existen fuera del agua: nunca se
+        // ven cortados por la superficie; los dibujados (-2) dejan un rastro
+        let keep = select(0.0, 0.35, material.extra.z < -1.5);
+        let under = keep + (1.0 - keep) * smoothstep(5.0, 3.8, view.world_position.y);
         c = vec4<f32>(c.rgb, c.a * smoothstep(0.15, 0.7, facing) * smoothstep(1.5, 7.0, near) * under);
     }
     if material.extra.w > 0.5 {
