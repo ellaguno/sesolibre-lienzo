@@ -4,7 +4,7 @@ assets/audio/render/
 assets/audio/**/*.wav
 assets/sprites/raw/
 # legado Vivero: cachés y audio generado
-lienzo/android/
+lienzo/android/assets/
 lienzo/target/
 # material crudo descargado (pesado; se regenera desde las fuentes del manifiesto)
 __pycache__/
