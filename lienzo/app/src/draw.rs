@@ -258,6 +258,7 @@ pub fn draw(
     ptr: Res<Pointer>,
     time: Res<Time>,
     windows: Query<&Window, With<PrimaryWindow>>,
+    palette: Query<&ComputedNode, With<crate::ui::PaletteRoot>>,
     cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
     mut st: ResMut<DrawState>,
     mut obra: ResMut<Obra>,
@@ -278,7 +279,11 @@ pub fn draw(
     }
     // la paleta ocupa la franja inferior: ahí no se dibuja
     if let Some(c) = ptr.pos {
-        if c.y > window.height() - crate::ui::palette_h() && st.started.is_none() {
+        let ph = palette
+            .single()
+            .map(|n| n.size().y * n.inverse_scale_factor())
+            .unwrap_or_else(|_| crate::ui::palette_h());
+        if c.y > window.height() - ph && st.started.is_none() {
             return;
         }
     }

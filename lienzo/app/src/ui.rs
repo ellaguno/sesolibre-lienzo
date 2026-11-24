@@ -11,6 +11,9 @@ use lienzo_core::{Brush, Water};
 
 /// Alto de la franja de la paleta. En pantalla táctil es más alta: botones de
 /// dedo y dos filas.
+/// Alto nominal de la paleta (una fila de iconos y una de acciones). La
+/// paleta real se ajusta sola al envolver filas; para la zona muerta del
+/// dibujo se usa `PaletteRoot`'s `ComputedNode`.
 pub fn palette_h() -> f32 {
     icon_d() + row_h() + 30.0
 }
@@ -132,20 +135,49 @@ pub fn setup(
                 left: Val::Px(0.0),
                 right: Val::Px(0.0),
                 bottom: Val::Px(0.0),
-                height: Val::Px(palette_h()),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(10.0),
                 justify_content: JustifyContent::End,
                 align_items: AlignItems::Center,
-                padding: UiRect::bottom(Val::Px(10.0)),
+                padding: UiRect::axes(Val::Px(8.0), Val::Px(10.0)),
                 ..default()
             },
             BackgroundColor(BG),
         ))
         .with_children(|col| {
+            // colores (solo con pinceles de color)
+            col.spawn((
+                SwatchRow,
+                Node {
+                    width: Val::Percent(100.0),
+                    justify_content: JustifyContent::Center,
+                    column_gap: Val::Px(8.0),
+                    ..default()
+                },
+            ))
+            .with_children(|row| {
+                for (i, c) in SWATCHES.iter().enumerate() {
+                    row.spawn((
+                        Action::Swatch(i),
+                        Node {
+                            width: Val::Px(30.0),
+                            height: Val::Px(30.0),
+                            border: UiRect::all(Val::Px(2.0)),
+                            border_radius: BorderRadius::all(Val::Px(999.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(c[0], c[1], c[2], 0.9)),
+                        BorderColor::all(BORDER),
+                    ));
+                }
+            });
             // fila corta: vista, deshacer, galería, contemplar
             col.spawn(Node {
+                width: Val::Percent(100.0),
+                flex_wrap: FlexWrap::Wrap,
+                justify_content: JustifyContent::Center,
                 column_gap: Val::Px(8.0),
+                row_gap: Val::Px(8.0),
                 align_items: AlignItems::Center,
                 ..default()
             })
@@ -157,9 +189,13 @@ pub fn setup(
                 button(row, &font.0, Action::Gallery, "galería");
                 button(row, &font.0, Action::Contemplate, "contemplar");
             });
-            // fila de iconos
+            // fila de iconos (en vertical se parte en dos)
             col.spawn(Node {
+                width: Val::Percent(100.0),
+                flex_wrap: FlexWrap::Wrap,
+                justify_content: JustifyContent::Center,
                 column_gap: Val::Px(6.0),
+                row_gap: Val::Px(6.0),
                 align_items: AlignItems::Center,
                 ..default()
             })
@@ -215,35 +251,6 @@ pub fn setup(
                     }
                 }
             });
-        });
-    commands
-        .spawn((
-            SwatchRow,
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(0.0),
-                right: Val::Px(0.0),
-                bottom: Val::Px(palette_h() + 8.0),
-                justify_content: JustifyContent::Center,
-                column_gap: Val::Px(8.0),
-                ..default()
-            },
-        ))
-        .with_children(|row| {
-            for (i, c) in SWATCHES.iter().enumerate() {
-                row.spawn((
-                    Action::Swatch(i),
-                    Node {
-                        width: Val::Px(30.0),
-                        height: Val::Px(30.0),
-                        border: UiRect::all(Val::Px(2.0)),
-                        border_radius: BorderRadius::all(Val::Px(999.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(c[0], c[1], c[2], 0.9)),
-                    BorderColor::all(BORDER),
-                ));
-            }
         });
     commands
         .spawn((

@@ -16,6 +16,7 @@ pub const SPEED: f32 = 1.1;
 
 #[derive(Resource)]
 pub struct Dive {
+    pub trace: f32,
     pub active: bool,
     /// Posición a lo largo de la ruta, 0..1.
     pub u: f32,
@@ -32,6 +33,7 @@ pub struct Dive {
 impl Default for Dive {
     fn default() -> Self {
         Dive {
+            trace: 0.0,
             active: false,
             u: std::env::var("LIENZO_DIVE_U")
                 .ok()
@@ -55,6 +57,7 @@ pub fn swim(
     st: Res<DrawState>,
     ptr: Res<Pointer>,
     mut dive: ResMut<Dive>,
+    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut q: Query<(&mut Orbit, &mut Transform), With<Camera3d>>,
 ) {
     let Ok((mut orbit, mut tf)) = q.single_mut() else {
@@ -96,6 +99,20 @@ pub fn swim(
     dive.u = (dive.u + SPEED * dt / dive.route_len).rem_euclid(1.0);
     let mut target = to_world(route::sample(&dive.route, dive.u));
     let mut ahead = to_world(route::sample(&dive.route, dive.u + 0.04));
+    // en vertical (teléfono) el campo visual es estrecho: la ruta se aleja
+    // del centro en proporción, como hace la cámara de órbita
+    let portrait = windows
+        .single()
+        .ok()
+        .filter(|w| w.width() > 1.0 && w.height() > 1.0)
+        .map(|w| (w.height() / w.width()).clamp(1.0, 3.0))
+        .unwrap_or(1.0);
+    // y siempre un poco por fuera del lienzo: se contempla la obra entera
+    let wide = 1.4 * (1.0 + 0.45 * (portrait - 1.0));
+    target.x *= wide;
+    target.z *= wide;
+    ahead.x *= wide;
+    ahead.z *= wide;
     // nunca dentro del relieve: al menos 1.7 por encima del suelo
     let floor = crate::terrain::floor_y(&obra.scene, target.x, target.z);
     target.y = target.y.max(floor + 2.3);
@@ -112,6 +129,16 @@ pub fn swim(
     let pos = dive.pos;
     let look = dive.look;
     *tf = Transform::from_translation(pos).looking_at(look, Vec3::Y);
+    if std::env::var("LIENZO_TRACE").is_ok() {
+        dive.trace += dt;
+        if dive.trace > 3.0 {
+            dive.trace = 0.0;
+            info!(
+                "buceo u={:.2} wide={:.2} pos=({:.1},{:.1},{:.1}) target=({:.1},{:.1},{:.1}) ruta={} pts",
+                dive.u, wide, pos.x, pos.y, pos.z, target.x, target.y, target.z, dive.route.len()
+            );
+        }
+    }
 }
 
 /// Avisa al motor dónde está el oído.

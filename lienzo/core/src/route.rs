@@ -47,7 +47,7 @@ pub fn auto(scene: &Scene) -> Vec<Point> {
         .iter()
         .map(|(_, c)| (c.x * c.x + c.z * c.z).sqrt())
         .fold(0.0f32, f32::max);
-    let radius = (max_r + 0.45).clamp(0.7, 1.3);
+    let radius = (max_r + 0.3).clamp(0.7, 1.0);
     pts.iter()
         .map(|(a, c)| {
             Point::new(
@@ -86,9 +86,9 @@ pub fn sample(route: &[Point], u: f32) -> Point {
     };
     // Catmull-Rom puede sobrepasar los puntos: la ruta nunca sale del agua
     Point::new(
-        cr(p0.x, p1.x, p2.x, p3.x).clamp(-0.95, 0.95),
+        cr(p0.x, p1.x, p2.x, p3.x).clamp(-1.05, 1.05),
         cr(p0.y, p1.y, p2.y, p3.y).clamp(0.12, 0.9),
-        cr(p0.z, p1.z, p2.z, p3.z).clamp(-0.95, 0.95),
+        cr(p0.z, p1.z, p2.z, p3.z).clamp(-1.05, 1.05),
     )
 }
 
@@ -109,13 +109,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn auto_route_is_a_loop_inside_the_volume() {
+    fn auto_route_is_a_loop_around_the_volume() {
         let s = Scene::demo();
         let r = of(&s);
         assert!(r.len() >= 3);
         for i in 0..50 {
             let p = sample(&r, i as f32 / 50.0);
-            assert!(p.x.abs() <= 1.0 && p.z.abs() <= 1.0 && (0.0..=1.0).contains(&p.y));
+            // rodea la obra: puede asomar apenas fuera del lienzo
+            assert!(p.x.abs() <= 1.05 && p.z.abs() <= 1.05 && (0.0..=1.0).contains(&p.y));
         }
         assert!(length(&r) > 1.0);
     }
