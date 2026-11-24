@@ -96,7 +96,7 @@ impl SpriteMaterials {
 }
 
 /// Proporción ancho/alto de cada sprite, medida al recortar.
-fn aspect(name: &str) -> f32 {
+pub fn aspect(name: &str) -> f32 {
     match name {
         "medusa" => 512.0 / 608.0,
         "pez_a_1" => 923.0 / 346.0,

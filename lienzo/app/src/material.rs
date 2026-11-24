@@ -131,6 +131,14 @@ impl CardMaterial {
 pub static MIN_SHADER: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 
 impl Material for CardMaterial {
+    fn vertex_shader() -> ShaderRef {
+        if *MIN_SHADER.get().unwrap_or(&false) {
+            return ShaderRef::Default;
+        }
+        let path = bevy::asset::embedded_path!("card.wesl");
+        ShaderRef::Path(AssetPath::from_path_buf(path).with_source("embedded"))
+    }
+
     fn fragment_shader() -> ShaderRef {
         let minimal = *MIN_SHADER.get().unwrap_or(&false);
         let path = if minimal {

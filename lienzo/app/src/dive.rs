@@ -99,8 +99,11 @@ pub fn swim(
     // nunca dentro del relieve: al menos 1.7 por encima del suelo
     let floor = crate::terrain::floor_y(&obra.scene, target.x, target.z);
     target.y = target.y.max(floor + 2.3);
-    // la mirada va por delante, casi a nivel, apenas hacia la obra
-    ahead.y = target.y - 0.3;
+    // la mirada va por delante y se vuelve hacia la obra (el centro), un
+    // poco por debajo de la cámara: se contempla, no se mira la arena
+    let center = Vec3::new(0.0, (target.y - 1.2).max(floor + 1.0), 0.0);
+    ahead = ahead * 0.55 + center * 0.45;
+    ahead.y = ahead.y.min(target.y - 0.2);
     // suavidad: la cámara persigue la ruta, la mirada va un poco por delante
     let k = 1.0 - (-2.5 * dt).exp();
     let (p0, l0) = (dive.pos, dive.look);

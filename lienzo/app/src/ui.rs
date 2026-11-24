@@ -2,6 +2,7 @@
 //! contemplación la paleta se esconde; solo queda la obra.
 
 use crate::draw::{brush_name, DrawState, Layer, View, SWATCHES};
+use crate::textures;
 use crate::Obra;
 use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
@@ -11,11 +12,20 @@ use lienzo_core::{Brush, Water};
 /// Alto de la franja de la paleta. En pantalla táctil es más alta: botones de
 /// dedo y dos filas.
 pub fn palette_h() -> f32 {
+    icon_d() + row_h() + 30.0
+}
+
+/// Diámetro de los botones de icono.
+fn icon_d() -> f32 {
     if cfg!(target_os = "android") {
-        230.0
+        58.0
     } else {
-        84.0
+        46.0
     }
+}
+
+fn row_h() -> f32 {
+    font_px() * 2.4
 }
 
 fn font_px() -> f32 {
@@ -47,6 +57,10 @@ pub enum Action {
 #[derive(Component)]
 pub struct Hint;
 
+/// El disco del botón Color: muestra el color activo.
+#[derive(Component)]
+pub struct ColorDot;
+
 // Botones transparentes y sutiles: un velo claro, borde fino, texto luminoso.
 const BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.0);
 const BTN: Color = Color::srgba(1.0, 1.0, 1.0, 0.07);
@@ -72,7 +86,44 @@ pub fn load_font(mut commands: Commands, assets: Res<AssetServer>) {
     commands.insert_resource(UiFont(assets.load("fonts/NotoSans-Variable.ttf")));
 }
 
-pub fn setup(mut commands: Commands, font: Res<UiFont>) {
+pub fn setup(
+    mut commands: Commands,
+    font: Res<UiFont>,
+    assets: Res<AssetServer>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    // Barra de pinceles: el icono es la imagen del elemento.
+    let d = icon_d();
+    let sprite = |name: &'static str| -> (Handle<Image>, f32) {
+        (
+            assets.load(format!("sprites/cut/{name}.png")),
+            crate::cards::aspect(name),
+        )
+    };
+    let gen = |images: &mut Assets<Image>, kind: &str| -> (Handle<Image>, f32) {
+        (images.add(textures::icon(kind)), 1.0)
+    };
+    let mut icons: Vec<(Brush, Handle<Image>, f32)> = Vec::new();
+    for b in Brush::ALL.iter() {
+        let (img, aspect) = match b {
+            Brush::Kelp => sprite("kelp_hoja"),
+            Brush::Coral => sprite("coral_a_1"),
+            Brush::Anemona => sprite("anemona"),
+            Brush::Cardumen => sprite("pez_b"),
+            Brush::Medusa => sprite("medusa"),
+            Brush::Ballena => sprite("ballena"),
+            Brush::Barco => sprite("barco"),
+            Brush::Burbujas => gen(&mut images, "burbujas"),
+            Brush::Farol => gen(&mut images, "farol"),
+            Brush::Haz => gen(&mut images, "haz"),
+            Brush::Arcoiris => gen(&mut images, "arcoiris"),
+            Brush::Elevar => gen(&mut images, "elevar"),
+            Brush::Hundir => gen(&mut images, "hundir"),
+            Brush::Ruta => gen(&mut images, "ruta"),
+            Brush::Color => (Handle::default(), 1.0),
+        };
+        icons.push((*b, img, aspect));
+    }
     commands
         .spawn((
             PaletteRoot,
@@ -82,26 +133,88 @@ pub fn setup(mut commands: Commands, font: Res<UiFont>) {
                 right: Val::Px(0.0),
                 bottom: Val::Px(0.0),
                 height: Val::Px(palette_h()),
-                flex_wrap: FlexWrap::Wrap,
-                row_gap: Val::Px(8.0),
-                justify_content: JustifyContent::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(10.0),
+                justify_content: JustifyContent::End,
                 align_items: AlignItems::Center,
-                column_gap: Val::Px(8.0),
+                padding: UiRect::bottom(Val::Px(10.0)),
                 ..default()
             },
             BackgroundColor(BG),
         ))
-        .with_children(|row| {
-            for b in Brush::ALL.iter() {
-                button(row, &font.0, Action::Pick(*b), brush_name(*b));
-            }
-            spacer(row);
-            button(row, &font.0, Action::View(View::Dibujo), "dibujar");
-            button(row, &font.0, Action::View(View::Buceo), "bucear");
-            spacer(row);
-            button(row, &font.0, Action::Undo, "deshacer");
-            button(row, &font.0, Action::Gallery, "galería");
-            button(row, &font.0, Action::Contemplate, "contemplar");
+        .with_children(|col| {
+            // fila corta: vista, deshacer, galería, contemplar
+            col.spawn(Node {
+                column_gap: Val::Px(8.0),
+                align_items: AlignItems::Center,
+                ..default()
+            })
+            .with_children(|row| {
+                button(row, &font.0, Action::View(View::Dibujo), "dibujar");
+                button(row, &font.0, Action::View(View::Buceo), "bucear");
+                spacer(row);
+                button(row, &font.0, Action::Undo, "deshacer");
+                button(row, &font.0, Action::Gallery, "galería");
+                button(row, &font.0, Action::Contemplate, "contemplar");
+            });
+            // fila de iconos
+            col.spawn(Node {
+                column_gap: Val::Px(6.0),
+                align_items: AlignItems::Center,
+                ..default()
+            })
+            .with_children(|row| {
+                for (b, img, aspect) in icons {
+                    let mut btn = row.spawn((
+                        Action::Pick(b),
+                        Node {
+                            width: Val::Px(d),
+                            height: Val::Px(d),
+                            border: UiRect::all(Val::Px(1.0)),
+                            border_radius: BorderRadius::all(Val::Px(999.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(BTN),
+                        BorderColor::all(BORDER),
+                    ));
+                    if b == Brush::Color {
+                        btn.with_children(|c| {
+                            c.spawn((
+                                ColorDot,
+                                bevy::picking::Pickable::IGNORE,
+                                Node {
+                                    width: Val::Px(d * 0.5),
+                                    height: Val::Px(d * 0.5),
+                                    border_radius: BorderRadius::all(Val::Px(999.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.9)),
+                            ));
+                        });
+                    } else {
+                        // la imagen cabe en un cuadro del 70 % del botón
+                        let box_ = d * 0.7;
+                        let (w, h) = if aspect >= 1.0 {
+                            (box_, box_ / aspect)
+                        } else {
+                            (box_ * aspect, box_)
+                        };
+                        btn.with_children(|c| {
+                            c.spawn((
+                                bevy::picking::Pickable::IGNORE,
+                                ImageNode::new(img),
+                                Node {
+                                    width: Val::Px(w),
+                                    height: Val::Px(h),
+                                    ..default()
+                                },
+                            ));
+                        });
+                    }
+                }
+            });
         });
     commands
         .spawn((
@@ -301,7 +414,12 @@ pub fn refresh(
         ),
     >,
     mut hint: Query<&mut Text, With<Hint>>,
+    mut dot: Query<&mut BackgroundColor, (With<ColorDot>, Without<Action>)>,
 ) {
+    if let Ok(mut bg) = dot.single_mut() {
+        let c = SWATCHES[st.swatch];
+        bg.0 = Color::srgba(c[0], c[1], c[2], 0.95);
+    }
     for (action, mut bg, mut border) in buttons.iter_mut() {
         let on = match action {
             Action::Pick(b) => *b == st.brush,

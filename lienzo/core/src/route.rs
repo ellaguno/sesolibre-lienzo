@@ -36,19 +36,25 @@ pub fn auto(scene: &Scene) -> Vec<Point> {
         return (0..12)
             .map(|i| {
                 let a = i as f32 / 12.0 * std::f32::consts::TAU;
-                Point::new(0.7 * a.cos(), 0.4, 0.7 * a.sin())
+                Point::new(0.85 * a.cos(), 0.6, 0.85 * a.sin())
             })
             .collect();
     }
     pts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-    // se nada un poco por fuera de cada elemento, hacia el centro no: desde
-    // el lado opuesto al centro, para verlo de frente
+    // un lazo por fuera de todo: radio fijo, más allá del elemento más lejano,
+    // de modo que nunca se atraviesa nada; la altura sigue a cada elemento
+    let max_r = pts
+        .iter()
+        .map(|(_, c)| (c.x * c.x + c.z * c.z).sqrt())
+        .fold(0.0f32, f32::max);
+    let radius = (max_r + 0.45).clamp(0.7, 1.3);
     pts.iter()
-        .map(|(_, c)| {
-            let r = (c.x * c.x + c.z * c.z).sqrt().max(0.2);
-            // bastante por fuera y por encima: se mira la obra, no se atraviesa
-            let k = (r + 0.55).min(0.95) / r;
-            Point::new(c.x * k, (c.y * 0.5 + 0.38).clamp(0.4, 0.7), c.z * k)
+        .map(|(a, c)| {
+            Point::new(
+                radius * a.cos(),
+                (c.y * 0.5 + 0.5).clamp(0.52, 0.82),
+                radius * a.sin(),
+            )
         })
         .collect()
 }

@@ -99,6 +99,82 @@ pub fn caustic_tile() -> Image {
     img
 }
 
+/// Iconos de la barra para los pinceles sin sprite. Blancos con alfa: el
+/// botón los tiñe.
+pub fn icon(kind: &str) -> Image {
+    let kind = kind.to_string();
+    make(64, 64, move |u, v| {
+        let x = (u - 0.5) * 2.0;
+        let y = (0.5 - v) * 2.0; // +y arriba
+        let disc = |cx: f32, cy: f32, r: f32| -> f32 {
+            let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
+            (1.0 - (d - r) * 10.0).clamp(0.0, 1.0)
+        };
+        let ring = |cx: f32, cy: f32, r: f32, w: f32| -> f32 {
+            let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
+            (1.0 - ((d - r).abs() - w) * 12.0).clamp(0.0, 1.0)
+        };
+        let (c, a): ([f32; 3], f32) = match kind.as_str() {
+            "burbujas" => {
+                let a = ring(-0.3, -0.35, 0.22, 0.03)
+                    .max(ring(0.3, 0.05, 0.3, 0.03))
+                    .max(ring(-0.15, 0.5, 0.16, 0.03));
+                ([0.85, 0.95, 1.0], a)
+            }
+            "farol" => {
+                let d = (x * x + y * y).sqrt();
+                let glow = (1.0 - d * 1.1).clamp(0.0, 1.0).powf(1.6);
+                let core = disc(0.0, 0.0, 0.22);
+                ([1.0, 0.9, 0.65], (glow * 0.7 + core).min(1.0))
+            }
+            "haz" => {
+                // tres haces inclinados que se apagan hacia abajo
+                let mut a: f32 = 0.0;
+                for (k, off) in [-0.45f32, 0.0, 0.45].iter().enumerate() {
+                    let xx = x - off - 0.25 * (y - 1.0);
+                    let w = 0.10 + 0.03 * k as f32;
+                    a = a.max((1.0 - (xx.abs() / w)).clamp(0.0, 1.0) * ((y + 1.0) / 2.0).powf(0.8));
+                }
+                ([0.95, 1.0, 1.0], a)
+            }
+            "arcoiris" => {
+                // medio arco de bandas
+                let d = (x * x + (y + 0.5).powi(2)).sqrt();
+                let a = if y > -0.5 { (1.0 - ((d - 0.8).abs() - 0.22) * 8.0).clamp(0.0, 1.0) } else { 0.0 };
+                let t = ((d - 0.58) / 0.44).clamp(0.0, 1.0);
+                let col = [
+                    0.5 + 0.5 * (t * 6.28).cos(),
+                    0.5 + 0.5 * (t * 6.28 - 2.1).cos(),
+                    0.5 + 0.5 * (t * 6.28 - 4.2).cos(),
+                ];
+                (col, a)
+            }
+            "elevar" | "hundir" => {
+                let up = kind == "elevar";
+                let sign = if up { 1.0 } else { -1.0 };
+                // una loma (o una fosa): perfil suave
+                let h = sign * 0.55 * (-(x * x) * 3.0).exp() - 0.1;
+                let a = if up {
+                    (1.0 - (y - h) * 8.0).clamp(0.0, 1.0) * (y > -0.9) as i32 as f32
+                } else {
+                    (1.0 - (y - h) * 8.0).clamp(0.0, 1.0) * (y > -0.9) as i32 as f32
+                };
+                ([0.95, 0.9, 0.8], a)
+            }
+            _ => {
+                // ruta: lazo de puntos
+                let mut a: f32 = 0.0;
+                for i in 0..10 {
+                    let t = i as f32 / 10.0 * std::f32::consts::TAU;
+                    a = a.max(disc(0.65 * t.cos(), 0.45 * t.sin(), 0.08));
+                }
+                ([1.0, 1.0, 1.0], a)
+            }
+        };
+        [c[0], c[1], c[2], a]
+    })
+}
+
 /// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
 /// color lo pone el material).
 pub fn blob() -> Image {

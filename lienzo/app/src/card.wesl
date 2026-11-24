@@ -1,8 +1,10 @@
 // Textura × color, niebla exponencial cuadrática por distancia a la cámara,
 // sin luces. Ver material.rs.
 
-import bevy_pbr::render::forward_io::VertexOutput;
+import bevy_pbr::render::forward_io::{Vertex, VertexOutput, decompress_vertex};
 import bevy_pbr::render::mesh_view_bindings::{view, globals};
+import bevy_pbr::render::mesh_functions;
+import bevy_pbr::render::view_transformations::position_world_to_clip;
 
 struct CardMaterial {
     color: vec4<f32>,
@@ -49,6 +51,37 @@ fn caustic_tex(p0: vec2<f32>, t: f32) -> f32 {
     let q = vec2<f32>(p.x * 0.83 - p.y * 0.56, p.x * 0.56 + p.y * 0.83);
     let b = textureSample(caustic_texture, caustic_sampler, fract(q * k * 1.61 + vec2<f32>(-t * 0.017, t * 0.009) + vec2<f32>(0.37, 0.61))).r;
     return min(a, b) * 1.4;
+}
+
+// Corrientes: un campo lento de mundo que mece las cartas (más arriba, más;
+// la base queda anclada). Ni el relieve, ni la superficie, ni el fondo, ni
+// los rayos: solo lo que flota o crece.
+fn current(p: vec3<f32>, t: f32) -> vec3<f32> {
+    let a = sin(p.x * 0.55 + t * 0.37 + p.z * 0.3) + 0.5 * sin(p.z * 1.1 - t * 0.23);
+    let b = cos(p.z * 0.6 + t * 0.31 + p.x * 0.4) + 0.5 * cos(p.x * 0.9 + t * 0.19);
+    let c = sin((p.x + p.z) * 0.4 + t * 0.27);
+    return vec3<f32>(a, 0.35 * c, b) * 0.09;
+}
+
+@vertex
+fn vertex(v: Vertex) -> VertexOutput {
+    var out: VertexOutput;
+    let vert = decompress_vertex(v, v.instance_index);
+    let world_from_local = mesh_functions::get_world_from_local(v.instance_index);
+    out.world_normal = mesh_functions::mesh_normal_local_to_world(vert.normal, v.instance_index);
+    var wp = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(vert.position, 1.0));
+    if material.extra.w < 0.5 && material.extra.z > -0.5 && material.extra.z < 0.5 {
+        // la carta se mece con la corriente; la parte alta (uv.y = 0) más
+        let sway = 1.0 - vert.uv.y;
+        let root = world_from_local[3].xyz;
+        wp = vec4<f32>(wp.xyz + current(root, globals.time) * sway, wp.w);
+    }
+    out.world_position = wp;
+    out.position = position_world_to_clip(wp.xyz);
+    out.uv = vert.uv;
+    @if(VERTEX_OUTPUT_INSTANCE_INDEX)
+    out.instance_index = v.instance_index;
+    return out;
 }
 
 @fragment
