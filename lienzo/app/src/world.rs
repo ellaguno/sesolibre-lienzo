@@ -348,7 +348,11 @@ pub fn billboards(
     let Ok((cam, orbit)) = cam.single() else {
         return;
     };
-    let f = ((orbit.pitch - 0.55) / (crate::orbit::TOP_PITCH - 0.55)).clamp(0.0, 1.0);
+    // la inclinación se mide en la cámara real (en contemplación la órbita
+    // no se actualiza y las cartas quedaban tumbadas)
+    let _ = orbit;
+    let pitch = (-cam.forward().y).clamp(-1.0, 1.0).asin();
+    let f = ((pitch - 0.55) / (crate::orbit::TOP_PITCH - 0.55)).clamp(0.0, 1.0);
     let f = f * f * (3.0 - 2.0 * f);
     for mut tf in q.iter_mut() {
         let to_cam = cam.translation - tf.translation;
