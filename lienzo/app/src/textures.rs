@@ -300,7 +300,7 @@ pub fn blob() -> Image {
         // más pigmento en el borde, como la acuarela al secarse
         let a = (edge.powf(0.6) * 0.75 + (edge * (1.0 - edge) * 4.0).powf(2.0) * 0.35).min(1.0);
         // muy transparente: las manchas se superponen como acuarela
-        [1.0, 1.0, 1.0, a * 0.32]
+        [1.0, 1.0, 1.0, a * 0.14]
     })
 }
 
