@@ -389,7 +389,10 @@ pub fn spawn_stroke(
             let slow = (1.0 - (stroke.speed() / 2.5).clamp(0.0, 1.0)) * 0.5;
             for (k, (p, _)) in along(stroke, 0.22).into_iter().enumerate() {
                 let r = 0.55 + 0.45 * h(k) + slow;
-                let jitter = Vec3::new(h(k + 31) - 0.5, h(k + 41) - 0.5, h(k + 51) - 0.5) * 0.25;
+                // cada mancha flota a una altura algo distinta: la hoja da la
+                // altura media, no un plano exacto
+                let mut jitter = Vec3::new(h(k + 31) - 0.5, (h(k + 41) - 0.5) * 6.4, h(k + 51) - 0.5) * 0.25;
+                jitter.y = jitter.y.clamp(0.35 - p.y, 4.7 - p.y);
                 commands.spawn((
                     Mesh3d(common.quad.clone()),
                     MeshMaterial3d(mat.clone()),
