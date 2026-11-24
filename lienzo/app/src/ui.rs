@@ -55,6 +55,8 @@ pub enum Action {
     Contemplate,
     Undo,
     Gallery,
+    /// Desplaza el renglón de pinceles (−1 izquierda, +1 derecha).
+    ScrollRow(f32),
 }
 
 #[derive(Component)]
@@ -78,6 +80,10 @@ pub struct WaterRow;
 /// La fila desplazable de pinceles.
 #[derive(Component)]
 pub struct BrushRow;
+
+/// Flecha de "hay más" en un extremo del renglón (−1 izquierda, +1 derecha).
+#[derive(Component)]
+pub struct RowArrow(pub f32);
 
 /// Cuánto se arrastró la fila desde que se tocó: si fue un barrido, al
 /// soltar no se elige pincel.
@@ -301,6 +307,39 @@ pub fn setup(
                     }
                 }
             });
+            // flechas que avisan de que hay más pinceles (y desplazan al tocar)
+            for (dir, kind) in [(-1.0f32, "flecha_izq"), (1.0f32, "flecha_der")] {
+                let d = icon_d() * 0.5;
+                col.spawn((
+                    RowArrow(dir),
+                    Action::ScrollRow(dir),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        bottom: Val::Px(10.0 + icon_d() * 0.5 - d * 0.5),
+                        left: if dir < 0.0 { Val::Px(2.0) } else { Val::Auto },
+                        right: if dir > 0.0 { Val::Px(2.0) } else { Val::Auto },
+                        width: Val::Px(d),
+                        height: Val::Px(d),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border_radius: BorderRadius::all(Val::Px(999.0)),
+                        display: Display::None,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.05, 0.1, 0.15, 0.55)),
+                ))
+                .with_children(|c| {
+                    c.spawn((
+                        bevy::picking::Pickable::IGNORE,
+                        ImageNode::new(images.add(textures::tool_icon(kind))).with_color(TXT),
+                        Node {
+                            width: Val::Px(d * 0.7),
+                            height: Val::Px(d * 0.7),
+                            ..default()
+                        },
+                    ));
+                });
+            }
         });
     commands
         .spawn((
@@ -503,6 +542,7 @@ pub fn on_click(
     mut obra: ResMut<Obra>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
     swipe: Res<Swipe>,
+    mut row: Query<&mut ScrollPosition, With<BrushRow>>,
 ) {
     let Ok(action) = q.get(click.event().entity) else {
         return;
@@ -545,67 +585,117 @@ pub fn on_click(
         // deshacer vive en draw::keys; se simula la tecla
         Action::Undo => keys.press(KeyCode::KeyZ),
         Action::Gallery => keys.press(KeyCode::KeyG),
+        Action::ScrollRow(dir) => {
+            if let Ok(mut sp) = row.single_mut() {
+                sp.0.x = (sp.0.x + dir * icon_d() * 3.0).max(0.0);
+            }
+        }
     }
 }
 
 /// Colores de la paleta, visibilidad en contemplación y el texto de ayuda.
+/// Paneles que `refresh` muestra u oculta, agrupados: un sistema no admite
+/// más de 16 parámetros. Todas las consultas de `Node` excluyen `Action`
+/// (los botones) para no chocar con `buttons`.
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct Panels<'w, 's> {
+    root: Query<'w, 's, &'static mut Node, (With<PaletteRoot>, Without<Action>)>,
+    waters: Query<'w, 's, &'static mut Node, (With<WaterRow>, Without<Action>, Without<PaletteRoot>)>,
+    layers: Query<
+        'w,
+        's,
+        &'static mut Node,
+        (With<LayerCol>, Without<Action>, Without<PaletteRoot>, Without<WaterRow>),
+    >,
+    swatches: Query<
+        'w,
+        's,
+        &'static mut Node,
+        (
+            With<SwatchRow>,
+            Without<Action>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+            Without<LayerCol>,
+        ),
+    >,
+    exit: Query<
+        'w,
+        's,
+        &'static mut Node,
+        (
+            With<ExitBtn>,
+            Without<Action>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+            Without<LayerCol>,
+            Without<SwatchRow>,
+        ),
+    >,
+    hint: Query<
+        'w,
+        's,
+        (&'static mut Text, &'static mut Node),
+        (
+            With<Hint>,
+            Without<Action>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+            Without<LayerCol>,
+            Without<SwatchRow>,
+            Without<ExitBtn>,
+        ),
+    >,
+    dot: Query<'w, 's, &'static mut BackgroundColor, (With<ColorDot>, Without<Action>)>,
+    palette: Query<'w, 's, &'static ComputedNode, With<PaletteRoot>>,
+    brush_row: Query<'w, 's, &'static ComputedNode, With<BrushRow>>,
+    windows: Query<'w, 's, &'static Window, With<bevy::window::PrimaryWindow>>,
+}
+
 pub fn refresh(
     time: Res<Time>,
     st: Res<DrawState>,
     obra: Res<Obra>,
     gallery: Res<crate::gallery::Gallery>,
-    mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor, &mut Node)>,
-    mut root: Query<&mut Node, (With<PaletteRoot>, Without<WaterRow>, Without<Action>)>,
-    mut waters: Query<&mut Node, (With<WaterRow>, Without<PaletteRoot>, Without<Action>)>,
-    mut layers: Query<
+    mut buttons: Query<(
+        &Action,
+        &mut BackgroundColor,
+        &mut BorderColor,
         &mut Node,
-        (
-            With<LayerCol>,
-            Without<PaletteRoot>,
-            Without<WaterRow>,
-            Without<Action>,
-        ),
-    >,
-    palette: Query<&ComputedNode, With<PaletteRoot>>,
+        Option<&RowArrow>,
+    )>,
+    mut p: Panels,
     mut hint_since: Local<f32>,
     mut hint_last: Local<String>,
-    mut swatches: Query<
-        &mut Node,
-        (
-            With<SwatchRow>,
-            Without<LayerCol>,
-            Without<PaletteRoot>,
-            Without<WaterRow>,
-            Without<Action>,
-        ),
-    >,
-    mut hint: Query<(&mut Text, &mut Node), (With<Hint>, Without<Action>, Without<LayerCol>, Without<PaletteRoot>, Without<WaterRow>, Without<SwatchRow>, Without<ExitBtn>)>,
-    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
-    mut dot: Query<&mut BackgroundColor, (With<ColorDot>, Without<Action>)>,
-    mut exit: Query<
-        &mut Node,
-        (
-            With<ExitBtn>,
-            Without<SwatchRow>,
-            Without<LayerCol>,
-            Without<PaletteRoot>,
-            Without<WaterRow>,
-            Without<Action>,
-        ),
-    >,
 ) {
-    if let Ok(mut node) = exit.single_mut() {
+    // flechas de "hay más pinceles": según el desplazamiento real del renglón
+    let (over, sx) = p
+        .brush_row
+        .single()
+        .map(|n| (n.content_size.x - n.size.x, n.scroll_position.x))
+        .unwrap_or((0.0, 0.0));
+    let arrow_show = |dir: f32| -> bool {
+        !st.contemplate && over > 4.0 && if dir > 0.0 { sx < over - 4.0 } else { sx > 4.0 }
+    };
+    if let Ok(mut node) = p.exit.single_mut() {
         let show = st.contemplate && time.elapsed_secs() < st.exit_until;
         let want = if show { Display::Flex } else { Display::None };
         if node.display != want {
             node.display = want;
         }
     }
-    if let Ok(mut bg) = dot.single_mut() {
+    if let Ok(mut bg) = p.dot.single_mut() {
         let c = SWATCHES[st.swatch];
         bg.0 = Color::srgba(c[0], c[1], c[2], 0.95);
     }
-    for (action, mut bg, mut border, mut node) in buttons.iter_mut() {
+    for (action, mut bg, mut border, mut node, arrow) in buttons.iter_mut() {
+        if let Some(arrow) = arrow {
+            let want = if arrow_show(arrow.0) { Display::Flex } else { Display::None };
+            if node.display != want {
+                node.display = want;
+            }
+            continue;
+        }
         let on = match action {
             Action::Pick(b) => *b == st.brush,
             // el botón de vista muestra la OTRA vista: un solo botón alterna
@@ -621,39 +711,39 @@ pub fn refresh(
             Action::Layer(l) => *l == st.layer,
             Action::Swatch(i) => *i == st.swatch && st.brush.uses_color(),
             Action::Contemplate => st.contemplate,
-            Action::Undo | Action::Gallery => false,
+            Action::Undo | Action::Gallery | Action::ScrollRow(_) => false,
         };
-        if !matches!(action, Action::Swatch(_)) {
+        if !matches!(action, Action::Swatch(_) | Action::ScrollRow(_)) {
             bg.0 = if on { BTN_ON } else { BTN };
         }
         *border = BorderColor::all(if on { BORDER_ON } else { BORDER });
     }
-    for mut node in root.iter_mut() {
+    for mut node in p.root.iter_mut() {
         node.display = if st.contemplate {
             Display::None
         } else {
             Display::Flex
         };
     }
-    for mut node in waters.iter_mut() {
+    for mut node in p.waters.iter_mut() {
         node.display = if st.contemplate || st.view != View::Dibujo {
             Display::None
         } else {
             Display::Flex
         };
     }
-    for mut node in swatches.iter_mut() {
+    for mut node in p.swatches.iter_mut() {
         node.display = if st.contemplate || !st.brush.uses_color() {
             Display::None
         } else {
             Display::Flex
         };
     }
-    let ph = palette
+    let ph = p.palette
         .single()
         .map(|n| n.size().y * n.inverse_scale_factor())
         .unwrap_or_else(|_| palette_h());
-    for mut node in layers.iter_mut() {
+    for mut node in p.layers.iter_mut() {
         node.display = if st.contemplate || st.view != View::Dibujo {
             Display::None
         } else {
@@ -662,10 +752,10 @@ pub fn refresh(
         // siempre justo encima de la paleta, mida lo que mida
         node.bottom = Val::Px(ph + 12.0);
     }
-    if let Ok((mut text, mut hnode)) = hint.single_mut() {
+    if let Ok((mut text, mut hnode)) = p.hint.single_mut() {
         // en pantallas bajas (teléfono horizontal) la columna de capas sube
         // hasta la ayuda: la ayuda se corre a la derecha
-        let short = windows.single().map(|w| w.height() < 560.0).unwrap_or(false);
+        let short = p.windows.single().map(|w| w.height() < 560.0).unwrap_or(false);
         let layers_on = !st.contemplate && st.view == View::Dibujo;
         hnode.left = Val::Px(if short && layers_on { 118.0 } else { 14.0 });
         if st.contemplate {
