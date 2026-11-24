@@ -175,6 +175,110 @@ pub fn icon(kind: &str) -> Image {
     })
 }
 
+/// Iconos de herramientas (línea blanca con alfa): lo que no es un pincel.
+pub fn tool_icon(kind: &str) -> Image {
+    let kind = kind.to_string();
+    make(64, 64, move |u, v| {
+        let x = (u - 0.5) * 2.0;
+        let y = (0.5 - v) * 2.0;
+        // segmento con grosor
+        let seg = |ax: f32, ay: f32, bx: f32, by: f32, w: f32| -> f32 {
+            let (dx, dy) = (bx - ax, by - ay);
+            let t = (((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy).max(1e-6)).clamp(0.0, 1.0);
+            let d = ((x - ax - dx * t).powi(2) + (y - ay - dy * t).powi(2)).sqrt();
+            (1.0 - (d - w) * 14.0).clamp(0.0, 1.0)
+        };
+        let ring = |cx: f32, cy: f32, rx: f32, ry: f32, w: f32| -> f32 {
+            let d = (((x - cx) / rx).powi(2) + ((y - cy) / ry).powi(2)).sqrt();
+            (1.0 - ((d - 1.0) * rx.min(ry) - w).abs() * 14.0 + w * 14.0).clamp(0.0, 1.0)
+        };
+        let disc = |cx: f32, cy: f32, r: f32| -> f32 {
+            let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
+            (1.0 - (d - r) * 14.0).clamp(0.0, 1.0)
+        };
+        let w = 0.08;
+        let a: f32 = match kind.as_str() {
+            "dibujar" => {
+                // un pincel: mango inclinado, virola y punta
+                seg(-0.55, -0.55, 0.35, 0.35, w)
+                    .max(seg(0.35, 0.35, 0.55, 0.55, w * 1.9))
+                    .max(seg(-0.55, -0.55, -0.75, -0.75, w * 1.6))
+            }
+            "bucear" => {
+                // visor de buceo: dos óculos unidos y la cinta
+                ring(-0.32, 0.05, 0.32, 0.28, w)
+                    .max(ring(0.32, 0.05, 0.32, 0.28, w))
+                    .max(seg(-0.05, 0.05, 0.05, 0.05, w))
+                    .max(seg(-0.64, 0.15, -0.9, 0.3, w))
+                    .max(seg(0.64, 0.15, 0.9, 0.3, w))
+            }
+            "deshacer" => {
+                // flecha que vuelve: arco y punta
+                let d = (x * x + (y + 0.1).powi(2)).sqrt();
+                let ang = (y + 0.1).atan2(x);
+                let arc = if ang > -1.2 && ang < 2.6 { (1.0 - ((d - 0.55).abs() - w) * 14.0).clamp(0.0, 1.0) } else { 0.0 };
+                arc.max(seg(0.2, -0.55, 0.55, -0.35, w))
+                    .max(seg(0.2, -0.55, 0.5, -0.8, w))
+            }
+            "galeria" => {
+                // tres marcos escalonados
+                let frame = |cx: f32, cy: f32| -> f32 {
+                    seg(cx - 0.35, cy - 0.28, cx + 0.35, cy - 0.28, w)
+                        .max(seg(cx + 0.35, cy - 0.28, cx + 0.35, cy + 0.28, w))
+                        .max(seg(cx + 0.35, cy + 0.28, cx - 0.35, cy + 0.28, w))
+                        .max(seg(cx - 0.35, cy + 0.28, cx - 0.35, cy - 0.28, w))
+                };
+                frame(0.2, -0.2).max(frame(-0.2, 0.2) * 0.75)
+            }
+            "salir" => {
+                // una cruz
+                seg(-0.45, -0.45, 0.45, 0.45, w).max(seg(-0.45, 0.45, 0.45, -0.45, w))
+            }
+            "contemplar" => {
+                // un ojo: almendra y pupila
+                let lid = |sgn: f32| -> f32 {
+                    let yy = sgn * 0.55 * (1.0 - x * x / 0.81).max(0.0).sqrt();
+                    (1.0 - ((y - yy).abs() - w) * 14.0).clamp(0.0, 1.0) * ((x.abs() < 0.9) as i32 as f32)
+                };
+                lid(1.0).max(lid(-1.0)).max(disc(0.0, 0.0, 0.2))
+            }
+            "capa_superficie" | "capa_agua" | "capa_fondo" => {
+                // marco con una línea en la altura de la capa
+                let yy = match kind.as_str() {
+                    "capa_superficie" => 0.45,
+                    "capa_agua" => 0.0,
+                    _ => -0.45,
+                };
+                let frame = seg(-0.6, -0.6, 0.6, -0.6, w * 0.6)
+                    .max(seg(0.6, -0.6, 0.6, 0.6, w * 0.6))
+                    .max(seg(0.6, 0.6, -0.6, 0.6, w * 0.6))
+                    .max(seg(-0.6, 0.6, -0.6, -0.6, w * 0.6));
+                (frame * 0.5).max(seg(-0.45, yy, 0.45, yy, w * 1.3))
+            }
+            _ => 0.0,
+        };
+        [1.0, 1.0, 1.0, a]
+    })
+}
+
+/// Disco con los colores de un agua (cielo arriba, abismo abajo).
+pub fn water_icon(top: [f32; 3], bottom: [f32; 3]) -> Image {
+    make(64, 64, move |u, v| {
+        let x = (u - 0.5) * 2.0;
+        let y = (0.5 - v) * 2.0;
+        let d = (x * x + y * y).sqrt();
+        let a = (1.0 - (d - 0.82) * 14.0).clamp(0.0, 1.0);
+        let t = ((y + 0.8) / 1.6).clamp(0.0, 1.0);
+        let t = t * t * (3.0 - 2.0 * t);
+        [
+            bottom[0] + (top[0] - bottom[0]) * t,
+            bottom[1] + (top[1] - bottom[1]) * t,
+            bottom[2] + (top[2] - bottom[2]) * t,
+            a,
+        ]
+    })
+}
+
 /// Mancha de acuarela: borde suave e irregular, grano de papel, blanca (el
 /// color lo pone el material).
 pub fn blob() -> Image {

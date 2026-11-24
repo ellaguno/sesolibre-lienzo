@@ -75,6 +75,10 @@ const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
 #[derive(Component)]
 pub struct WaterRow;
 
+/// Botón de salir de la contemplación (aparece al tocar).
+#[derive(Component)]
+pub struct ExitBtn;
+
 #[derive(Component)]
 pub struct LayerCol;
 
@@ -182,12 +186,12 @@ pub fn setup(
                 ..default()
             })
             .with_children(|row| {
-                button(row, &font.0, Action::View(View::Dibujo), "dibujar");
-                button(row, &font.0, Action::View(View::Buceo), "bucear");
+                tool(row, Action::View(View::Dibujo), images.add(textures::tool_icon("dibujar")));
+                tool(row, Action::View(View::Buceo), images.add(textures::tool_icon("bucear")));
                 spacer(row);
-                button(row, &font.0, Action::Undo, "deshacer");
-                button(row, &font.0, Action::Gallery, "galería");
-                button(row, &font.0, Action::Contemplate, "contemplar");
+                tool(row, Action::Undo, images.add(textures::tool_icon("deshacer")));
+                tool(row, Action::Gallery, images.add(textures::tool_icon("galeria")));
+                tool(row, Action::Contemplate, images.add(textures::tool_icon("contemplar")));
             });
             // fila de iconos (en vertical se parte en dos)
             col.spawn(Node {
@@ -265,8 +269,12 @@ pub fn setup(
             },
         ))
         .with_children(|col| {
-            for l in [Layer::Superficie, Layer::Agua, Layer::Fondo] {
-                button(col, &font.0, Action::Layer(l), l.name());
+            for (l, k) in [
+                (Layer::Superficie, "capa_superficie"),
+                (Layer::Agua, "capa_agua"),
+                (Layer::Fondo, "capa_fondo"),
+            ] {
+                tool(col, Action::Layer(l), images.add(textures::tool_icon(k)));
             }
         });
     commands
@@ -286,8 +294,54 @@ pub fn setup(
         ))
         .with_children(|row| {
             for w in Water::ALL {
-                button(row, &font.0, Action::Water(w), w.name());
+                let lk = crate::water::raw_look(w);
+                // las aguas son mundos: un disco con su cielo y su abismo
+                let img = images.add(textures::water_icon(lk.top, lk.bottom));
+                let d = icon_d() * 0.8;
+                row.spawn((
+                    Action::Water(w),
+                    Node {
+                        width: Val::Px(d),
+                        height: Val::Px(d),
+                        border: UiRect::all(Val::Px(1.0)),
+                        border_radius: BorderRadius::all(Val::Px(999.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(BTN),
+                    BorderColor::all(BORDER),
+                ))
+                .with_children(|c| {
+                    c.spawn((
+                        bevy::picking::Pickable::IGNORE,
+                        ImageNode::new(img),
+                        Node {
+                            width: Val::Px(d * 0.78),
+                            height: Val::Px(d * 0.78),
+                            ..default()
+                        },
+                    ));
+                });
             }
+        });
+    commands
+        .spawn((
+            ExitBtn,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(14.0),
+                top: Val::Px(if cfg!(target_os = "android") {
+                    56.0
+                } else {
+                    12.0
+                }),
+                display: Display::None,
+                ..default()
+            },
+        ))
+        .with_children(|row| {
+            tool(row, Action::Contemplate, images.add(textures::tool_icon("salir")));
         });
     commands.spawn((
         Hint,
@@ -325,6 +379,38 @@ fn spacer(row: &mut ChildSpawnerCommands) {
     });
 }
 
+/// Botón de herramienta: cuadrado redondeado con un icono de línea. Se
+/// distingue a simple vista de los pinceles (círculos con la imagen).
+fn tool(row: &mut ChildSpawnerCommands, action: Action, img: Handle<Image>) {
+    let d = icon_d() * 0.86;
+    row.spawn((
+        action,
+        Node {
+            width: Val::Px(d),
+            height: Val::Px(d),
+            border: UiRect::all(Val::Px(1.0)),
+            border_radius: BorderRadius::all(Val::Px(d * 0.24)),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        BackgroundColor(BTN),
+        BorderColor::all(BORDER),
+    ))
+    .with_children(|c| {
+        c.spawn((
+            bevy::picking::Pickable::IGNORE,
+            ImageNode::new(img).with_color(TXT),
+            Node {
+                width: Val::Px(d * 0.7),
+                height: Val::Px(d * 0.7),
+                ..default()
+            },
+        ));
+    });
+}
+
+#[allow(dead_code)]
 fn button(row: &mut ChildSpawnerCommands, font: &Handle<Font>, action: Action, label: &str) {
     row.spawn((
         action,
@@ -405,6 +491,7 @@ pub fn on_click(
 
 /// Colores de la paleta, visibilidad en contemplación y el texto de ayuda.
 pub fn refresh(
+    time: Res<Time>,
     st: Res<DrawState>,
     obra: Res<Obra>,
     gallery: Res<crate::gallery::Gallery>,
@@ -422,7 +509,24 @@ pub fn refresh(
     >,
     mut hint: Query<&mut Text, With<Hint>>,
     mut dot: Query<&mut BackgroundColor, (With<ColorDot>, Without<Action>)>,
+    mut exit: Query<
+        &mut Node,
+        (
+            With<ExitBtn>,
+            Without<SwatchRow>,
+            Without<LayerCol>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+        ),
+    >,
 ) {
+    if let Ok(mut node) = exit.single_mut() {
+        let show = st.contemplate && time.elapsed_secs() < st.exit_until;
+        let want = if show { Display::Flex } else { Display::None };
+        if node.display != want {
+            node.display = want;
+        }
+    }
     if let Ok(mut bg) = dot.single_mut() {
         let c = SWATCHES[st.swatch];
         bg.0 = Color::srgba(c[0], c[1], c[2], 0.95);

@@ -75,6 +75,9 @@ pub struct DrawState {
     started: Option<f64>,
     preview: Vec<Entity>,
     pub title_dirty: bool,
+    /// Hasta cuándo (segundos de app) se muestra el botón de salir en contemplación.
+    pub exit_until: f32,
+    last_tap: f32,
 }
 
 impl Default for DrawState {
@@ -101,6 +104,8 @@ impl Default for DrawState {
             started: None,
             preview: vec![],
             title_dirty: true,
+            exit_until: 0.0,
+            last_tap: -10.0,
         }
     }
 }
@@ -365,14 +370,26 @@ pub fn draw(
 /// carta da un pequeño pulso. Se elige la carta más cercana al cursor en pantalla.
 pub fn touch(
     ptr: Res<Pointer>,
+    time: Res<Time>,
     cams: Query<(&Camera, &GlobalTransform), With<Orbit>>,
-    st: Res<DrawState>,
+    mut st: ResMut<DrawState>,
     link: Res<crate::audio::AudioLink>,
     mut cards: Query<(&GlobalTransform, &Owned, &mut cards::Card)>,
 ) {
     if !st.contemplate || !ptr.just_down {
         return;
     }
+    // un toque enseña unos segundos el botón de salir; dos toques seguidos
+    // salen de la contemplación
+    let now = time.elapsed_secs();
+    if now - st.last_tap < 0.45 {
+        st.contemplate = false;
+        st.title_dirty = true;
+        st.last_tap = -10.0;
+        return;
+    }
+    st.last_tap = now;
+    st.exit_until = now + 5.0;
     let Ok((cam, cam_tf)) = cams.single() else {
         return;
     };

@@ -45,7 +45,7 @@ pub fn look(w: Water) -> Look {
     lk
 }
 
-fn raw_look(w: Water) -> Look {
+pub fn raw_look(w: Water) -> Look {
     match w {
         Water::Abismo => Look {
             top: [0.11, 0.36, 0.50],
