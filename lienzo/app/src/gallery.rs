@@ -180,9 +180,14 @@ pub fn autosave(
         let _ = std::fs::create_dir_all(&dir);
         let _ = std::fs::write(actual_json(), obra.scene.to_json());
         match &obra.path {
-            Some(p) => {
+            // solo se reescriben obras de la galería, nunca un archivo
+            // abierto desde fuera (las escenas de prueba del repo)
+            Some(p) if p.starts_with(&dir) => {
                 let _ = std::fs::write(actual_path(), p.to_string_lossy().as_bytes());
                 let _ = std::fs::write(p, obra.scene.to_json());
+            }
+            Some(_) => {
+                let _ = std::fs::remove_file(actual_path());
             }
             None => {
                 let _ = std::fs::remove_file(actual_path());
