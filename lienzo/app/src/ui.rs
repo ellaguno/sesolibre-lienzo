@@ -75,6 +75,17 @@ const TXT: Color = Color::srgba(0.94, 0.97, 0.98, 0.92);
 #[derive(Component)]
 pub struct WaterRow;
 
+/// La fila desplazable de pinceles.
+#[derive(Component)]
+pub struct BrushRow;
+
+/// Cuánto se arrastró la fila desde que se tocó: si fue un barrido, al
+/// soltar no se elige pincel.
+#[derive(Resource, Default)]
+pub struct Swipe {
+    pub moved: f32,
+}
+
 /// Botón de salir de la contemplación (aparece al tocar).
 #[derive(Component)]
 pub struct ExitBtn;
@@ -193,16 +204,48 @@ pub fn setup(
                 tool(row, Action::Gallery, images.add(textures::tool_icon("galeria")));
                 tool(row, Action::Contemplate, images.add(textures::tool_icon("contemplar")));
             });
-            // fila de iconos (en vertical se parte en dos)
-            col.spawn(Node {
-                width: Val::Percent(100.0),
-                flex_wrap: FlexWrap::Wrap,
-                justify_content: JustifyContent::Center,
-                column_gap: Val::Px(6.0),
-                row_gap: Val::Px(6.0),
-                align_items: AlignItems::Center,
-                ..default()
-            })
+            // fila de pinceles: un solo renglón que se desplaza con el dedo
+            // (o la rueda); lo que no cabe asoma cortado en el borde
+            col.spawn((
+                BrushRow,
+                Node {
+                    width: Val::Percent(100.0),
+                    overflow: Overflow::scroll_x(),
+                    column_gap: Val::Px(6.0),
+                    padding: UiRect::horizontal(Val::Px(6.0)),
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                ScrollPosition::DEFAULT,
+            ))
+            .observe(
+                |drag: On<bevy::picking::events::PointerDrag>,
+                 mut q: Query<&mut ScrollPosition, With<BrushRow>>,
+                 mut swipe: ResMut<Swipe>| {
+                    if let Ok(mut sp) = q.get_mut(drag.event().entity) {
+                        sp.0.x = (sp.0.x - drag.event().delta.x).max(0.0);
+                        swipe.moved += drag.event().delta.x.abs();
+                    }
+                },
+            )
+            .observe(
+                |press: On<bevy::picking::events::PointerPress>, mut swipe: ResMut<Swipe>| {
+                    let _ = press;
+                    swipe.moved = 0.0;
+                },
+            )
+            .observe(
+                |scroll: On<bevy::picking::events::PointerScroll>,
+                 mut q: Query<&mut ScrollPosition, With<BrushRow>>| {
+                    if let Ok(mut sp) = q.get_mut(scroll.event().entity) {
+                        let step = match scroll.event().unit {
+                            bevy::input::mouse::MouseScrollUnit::Line => 40.0,
+                            bevy::input::mouse::MouseScrollUnit::Pixel => 1.0,
+                        };
+                        sp.0.x = (sp.0.x - (scroll.event().y + scroll.event().x) * step).max(0.0);
+                    }
+                },
+            )
             .with_children(|row| {
                 for (b, img, aspect) in icons {
                     let mut btn = row.spawn((
@@ -210,6 +253,8 @@ pub fn setup(
                         Node {
                             width: Val::Px(d),
                             height: Val::Px(d),
+                            // en la fila desplazable no se encogen
+                            flex_shrink: 0.0,
                             border: UiRect::all(Val::Px(1.0)),
                             border_radius: BorderRadius::all(Val::Px(999.0)),
                             justify_content: JustifyContent::Center,
@@ -447,12 +492,16 @@ pub fn on_click(
     mut st: ResMut<DrawState>,
     mut obra: ResMut<Obra>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
+    swipe: Res<Swipe>,
 ) {
     let Ok(action) = q.get(click.event().entity) else {
         return;
     };
     match action {
         Action::Pick(b) => {
+            if swipe.moved > 12.0 {
+                return;
+            }
             st.brush = *b;
             st.title_dirty = true;
         }
@@ -495,9 +544,20 @@ pub fn refresh(
     st: Res<DrawState>,
     obra: Res<Obra>,
     gallery: Res<crate::gallery::Gallery>,
-    mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor)>,
-    mut root: Query<&mut Node, Or<(With<PaletteRoot>, With<WaterRow>)>>,
-    mut layers: Query<&mut Node, (With<LayerCol>, Without<PaletteRoot>, Without<WaterRow>)>,
+    mut buttons: Query<(&Action, &mut BackgroundColor, &mut BorderColor, &mut Node)>,
+    mut root: Query<&mut Node, (With<PaletteRoot>, Without<WaterRow>, Without<Action>)>,
+    mut waters: Query<&mut Node, (With<WaterRow>, Without<PaletteRoot>, Without<Action>)>,
+    mut layers: Query<
+        &mut Node,
+        (
+            With<LayerCol>,
+            Without<PaletteRoot>,
+            Without<WaterRow>,
+            Without<Action>,
+        ),
+    >,
+    mut hint_since: Local<f32>,
+    mut hint_last: Local<String>,
     mut swatches: Query<
         &mut Node,
         (
@@ -505,6 +565,7 @@ pub fn refresh(
             Without<LayerCol>,
             Without<PaletteRoot>,
             Without<WaterRow>,
+            Without<Action>,
         ),
     >,
     mut hint: Query<&mut Text, With<Hint>>,
@@ -517,6 +578,7 @@ pub fn refresh(
             Without<LayerCol>,
             Without<PaletteRoot>,
             Without<WaterRow>,
+            Without<Action>,
         ),
     >,
 ) {
@@ -531,11 +593,19 @@ pub fn refresh(
         let c = SWATCHES[st.swatch];
         bg.0 = Color::srgba(c[0], c[1], c[2], 0.95);
     }
-    for (action, mut bg, mut border) in buttons.iter_mut() {
+    for (action, mut bg, mut border, mut node) in buttons.iter_mut() {
         let on = match action {
             Action::Pick(b) => *b == st.brush,
+            // el botón de vista muestra la OTRA vista: un solo botón alterna
+            Action::View(v) if *v == st.view => {
+                node.display = Display::None;
+                continue;
+            }
+            Action::View(_) => {
+                node.display = Display::Flex;
+                false
+            }
             Action::Water(w) => *w == obra.scene.water,
-            Action::View(v) => *v == st.view,
             Action::Layer(l) => *l == st.layer,
             Action::Swatch(i) => *i == st.swatch && st.brush.uses_color(),
             Action::Contemplate => st.contemplate,
@@ -548,6 +618,13 @@ pub fn refresh(
     }
     for mut node in root.iter_mut() {
         node.display = if st.contemplate {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+    for mut node in waters.iter_mut() {
+        node.display = if st.contemplate || st.view != View::Dibujo {
             Display::None
         } else {
             Display::Flex
@@ -610,8 +687,16 @@ pub fn refresh(
             }
         };
         let s = format!("{titulo}\n{s}\n{}", gallery.status);
-        if text.0 != s {
+        if *hint_last != s {
+            *hint_last = s.clone();
             text.0 = s;
+            *hint_since = time.elapsed_secs();
+        } else if cfg!(target_os = "android")
+            && !text.0.is_empty()
+            && time.elapsed_secs() - *hint_since > 7.0
+        {
+            // en el teléfono la ayuda se retira sola: pantalla limpia
+            text.0.clear();
         }
     }
 }

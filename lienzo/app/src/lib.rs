@@ -232,6 +232,7 @@ pub fn run() -> anyhow::Result<()> {
         .insert_resource(gallery::Bank(bank))
         .insert_resource(link)
         .init_resource::<cards::SpriteMaterials>()
+        .init_resource::<ui::Swipe>()
         .add_systems(
             Startup,
             (
