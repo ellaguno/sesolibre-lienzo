@@ -1,15 +1,15 @@
-# material crudo descargado (pesado; se regenera desde las fuentes del manifiesto)
-assets/audio/raw/
-assets/sprites/raw/
-lienzo/target/
-assets/audio/**/*.wav
 assets/audio/fase0/*.wav
-*.wav.tmp
+assets/audio/raw/
 assets/audio/render/
+assets/audio/**/*.wav
+assets/sprites/raw/
 # legado Vivero: cachés y audio generado
-_vivero/godot-mvp/.godot/
-_vivero/godot-mvp/assets/audio/*.wav
+lienzo/android/
+lienzo/target/
+# material crudo descargado (pesado; se regenera desde las fuentes del manifiesto)
+__pycache__/
 _vivero/ai-render/out/
 _vivero/ai-render/__pycache__/
-__pycache__/
-lienzo/android/
+_vivero/godot-mvp/assets/audio/*.wav
+_vivero/godot-mvp/.godot/
+*.wav.tmp
