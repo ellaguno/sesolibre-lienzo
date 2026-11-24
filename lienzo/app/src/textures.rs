@@ -199,10 +199,10 @@ pub fn tool_icon(kind: &str) -> Image {
         let w = 0.08;
         let a: f32 = match kind.as_str() {
             "dibujar" => {
-                // un pincel: mango inclinado, virola y punta
-                seg(-0.55, -0.55, 0.35, 0.35, w)
-                    .max(seg(0.35, 0.35, 0.55, 0.55, w * 1.9))
-                    .max(seg(-0.55, -0.55, -0.75, -0.75, w * 1.6))
+                // un lápiz inclinado: cuerpo, punta y goma
+                seg(-0.35, -0.35, 0.45, 0.45, w * 1.7)
+                    .max(seg(-0.35, -0.35, -0.6, -0.6, w * 0.9))
+                    .max(seg(0.3, 0.6, 0.6, 0.3, w))
             }
             "bucear" => {
                 // visor de buceo: dos óculos unidos y la cinta
@@ -213,22 +213,23 @@ pub fn tool_icon(kind: &str) -> Image {
                     .max(seg(0.64, 0.15, 0.9, 0.3, w))
             }
             "deshacer" => {
-                // flecha que vuelve: arco y punta
-                let d = (x * x + (y + 0.1).powi(2)).sqrt();
-                let ang = (y + 0.1).atan2(x);
-                let arc = if ang > -1.2 && ang < 2.6 { (1.0 - ((d - 0.55).abs() - w) * 14.0).clamp(0.0, 1.0) } else { 0.0 };
-                arc.max(seg(0.2, -0.55, 0.55, -0.35, w))
-                    .max(seg(0.2, -0.55, 0.5, -0.8, w))
+                // flecha que vuelve a la izquierda: arco por arriba y punta
+                let d = (x * x + (y + 0.15).powi(2)).sqrt();
+                let ang = (y + 0.15).atan2(x);
+                let arc = if ang > 0.0 && ang < 3.1 { (1.0 - ((d - 0.5).abs() - w) * 14.0).clamp(0.0, 1.0) } else { 0.0 };
+                arc.max(seg(-0.5, -0.15, -0.75, 0.2, w))
+                    .max(seg(-0.5, -0.15, -0.15, 0.1, w))
             }
             "galeria" => {
-                // tres marcos escalonados
-                let frame = |cx: f32, cy: f32| -> f32 {
-                    seg(cx - 0.35, cy - 0.28, cx + 0.35, cy - 0.28, w)
-                        .max(seg(cx + 0.35, cy - 0.28, cx + 0.35, cy + 0.28, w))
-                        .max(seg(cx + 0.35, cy + 0.28, cx - 0.35, cy + 0.28, w))
-                        .max(seg(cx - 0.35, cy + 0.28, cx - 0.35, cy - 0.28, w))
+                // cuadrícula de cuatro obras
+                let sq = |cx: f32, cy: f32| -> f32 {
+                    let h = 0.26;
+                    seg(cx - h, cy - h, cx + h, cy - h, w * 0.8)
+                        .max(seg(cx + h, cy - h, cx + h, cy + h, w * 0.8))
+                        .max(seg(cx + h, cy + h, cx - h, cy + h, w * 0.8))
+                        .max(seg(cx - h, cy + h, cx - h, cy - h, w * 0.8))
                 };
-                frame(0.2, -0.2).max(frame(-0.2, 0.2) * 0.75)
+                sq(-0.36, 0.36).max(sq(0.36, 0.36)).max(sq(-0.36, -0.36)).max(sq(0.36, -0.36))
             }
             "salir" => {
                 // una cruz

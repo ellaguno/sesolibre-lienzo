@@ -160,32 +160,6 @@ pub fn setup(
             BackgroundColor(BG),
         ))
         .with_children(|col| {
-            // colores (solo con pinceles de color)
-            col.spawn((
-                SwatchRow,
-                Node {
-                    width: Val::Percent(100.0),
-                    justify_content: JustifyContent::Center,
-                    column_gap: Val::Px(8.0),
-                    ..default()
-                },
-            ))
-            .with_children(|row| {
-                for (i, c) in SWATCHES.iter().enumerate() {
-                    row.spawn((
-                        Action::Swatch(i),
-                        Node {
-                            width: Val::Px(30.0),
-                            height: Val::Px(30.0),
-                            border: UiRect::all(Val::Px(2.0)),
-                            border_radius: BorderRadius::all(Val::Px(999.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgba(c[0], c[1], c[2], 0.9)),
-                        BorderColor::all(BORDER),
-                    ));
-                }
-            });
             // fila corta: vista, deshacer, galería, contemplar
             col.spawn(Node {
                 width: Val::Percent(100.0),
@@ -197,12 +171,39 @@ pub fn setup(
                 ..default()
             })
             .with_children(|row| {
-                tool(row, Action::View(View::Dibujo), images.add(textures::tool_icon("dibujar")));
-                tool(row, Action::View(View::Buceo), images.add(textures::tool_icon("bucear")));
-                spacer(row);
-                tool(row, Action::Undo, images.add(textures::tool_icon("deshacer")));
-                tool(row, Action::Gallery, images.add(textures::tool_icon("galeria")));
-                tool(row, Action::Contemplate, images.add(textures::tool_icon("contemplar")));
+                let f = &font.0;
+                tool(row, f, Action::View(View::Dibujo), images.add(textures::tool_icon("dibujar")), "dibujar");
+                tool(row, f, Action::View(View::Buceo), images.add(textures::tool_icon("bucear")), "bucear");
+                tool(row, f, Action::Undo, images.add(textures::tool_icon("deshacer")), "deshacer");
+                tool(row, f, Action::Gallery, images.add(textures::tool_icon("galeria")), "galería");
+                tool(row, f, Action::Contemplate, images.add(textures::tool_icon("contemplar")), "contemplar");
+                // colores (solo con pinceles de color): a la derecha; si no
+                // caben (vertical) pasan al renglón siguiente
+                row.spawn((
+                    SwatchRow,
+                    Node {
+                        column_gap: Val::Px(8.0),
+                        align_items: AlignItems::Center,
+                        margin: UiRect::left(Val::Px(16.0)),
+                        ..default()
+                    },
+                ))
+                .with_children(|sw| {
+                    for (i, c) in SWATCHES.iter().enumerate() {
+                        sw.spawn((
+                            Action::Swatch(i),
+                            Node {
+                                width: Val::Px(30.0),
+                                height: Val::Px(30.0),
+                                border: UiRect::all(Val::Px(2.0)),
+                                border_radius: BorderRadius::all(Val::Px(999.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgba(c[0], c[1], c[2], 0.9)),
+                            BorderColor::all(BORDER),
+                        ));
+                    }
+                });
             });
             // fila de pinceles: un solo renglón que se desplaza con el dedo
             // (o la rueda); lo que no cabe asoma cortado en el borde
@@ -307,7 +308,7 @@ pub fn setup(
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(14.0),
-                top: Val::Percent(40.0),
+                bottom: Val::Px(palette_h() + 12.0),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(6.0),
                 ..default()
@@ -319,7 +320,7 @@ pub fn setup(
                 (Layer::Agua, "capa_agua"),
                 (Layer::Fondo, "capa_fondo"),
             ] {
-                tool(col, Action::Layer(l), images.add(textures::tool_icon(k)));
+                tool(col, &font.0, Action::Layer(l), images.add(textures::tool_icon(k)), l.name());
             }
         });
     commands
@@ -328,11 +329,7 @@ pub fn setup(
             Node {
                 position_type: PositionType::Absolute,
                 right: Val::Px(14.0),
-                top: Val::Px(if cfg!(target_os = "android") {
-                    56.0
-                } else {
-                    12.0
-                }),
+                top: Val::Px(12.0),
                 column_gap: Val::Px(6.0),
                 ..default()
             },
@@ -376,17 +373,13 @@ pub fn setup(
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(14.0),
-                top: Val::Px(if cfg!(target_os = "android") {
-                    56.0
-                } else {
-                    12.0
-                }),
+                top: Val::Px(12.0),
                 display: Display::None,
                 ..default()
             },
         ))
         .with_children(|row| {
-            tool(row, Action::Contemplate, images.add(textures::tool_icon("salir")));
+            tool(row, &font.0, Action::Contemplate, images.add(textures::tool_icon("salir")), "salir");
         });
     commands.spawn((
         Hint,
@@ -395,11 +388,7 @@ pub fn setup(
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(14.0),
-            top: Val::Px(if cfg!(target_os = "android") {
-                104.0
-            } else {
-                12.0
-            }),
+            top: Val::Px(12.0),
             right: Val::Px(14.0),
             ..default()
         },
@@ -426,17 +415,28 @@ fn spacer(row: &mut ChildSpawnerCommands) {
 
 /// Botón de herramienta: cuadrado redondeado con un icono de línea. Se
 /// distingue a simple vista de los pinceles (círculos con la imagen).
-fn tool(row: &mut ChildSpawnerCommands, action: Action, img: Handle<Image>) {
+fn tool(
+    row: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    action: Action,
+    img: Handle<Image>,
+    label: &str,
+) {
     let d = icon_d() * 0.86;
+    let fs = font_px() * 0.78;
     row.spawn((
         action,
         Node {
-            width: Val::Px(d),
-            height: Val::Px(d),
+            min_width: Val::Px(d * 1.25),
+            height: Val::Px(d + fs + 6.0),
+            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
             border: UiRect::all(Val::Px(1.0)),
             border_radius: BorderRadius::all(Val::Px(d * 0.24)),
+            flex_direction: FlexDirection::Column,
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
+            row_gap: Val::Px(1.0),
+            flex_shrink: 0.0,
             ..default()
         },
         BackgroundColor(BTN),
@@ -447,10 +447,20 @@ fn tool(row: &mut ChildSpawnerCommands, action: Action, img: Handle<Image>) {
             bevy::picking::Pickable::IGNORE,
             ImageNode::new(img).with_color(TXT),
             Node {
-                width: Val::Px(d * 0.7),
-                height: Val::Px(d * 0.7),
+                width: Val::Px(d * 0.58),
+                height: Val::Px(d * 0.58),
                 ..default()
             },
+        ));
+        c.spawn((
+            bevy::picking::Pickable::IGNORE,
+            Text::new(label.to_string()),
+            TextFont {
+                font: font.clone().into(),
+                font_size: FontSize::Px(fs),
+                ..default()
+            },
+            TextColor(TXT),
         ));
     });
 }
@@ -556,6 +566,7 @@ pub fn refresh(
             Without<Action>,
         ),
     >,
+    palette: Query<&ComputedNode, With<PaletteRoot>>,
     mut hint_since: Local<f32>,
     mut hint_last: Local<String>,
     mut swatches: Query<
@@ -568,7 +579,8 @@ pub fn refresh(
             Without<Action>,
         ),
     >,
-    mut hint: Query<&mut Text, With<Hint>>,
+    mut hint: Query<(&mut Text, &mut Node), (With<Hint>, Without<Action>, Without<LayerCol>, Without<PaletteRoot>, Without<WaterRow>, Without<SwatchRow>, Without<ExitBtn>)>,
+    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut dot: Query<&mut BackgroundColor, (With<ColorDot>, Without<Action>)>,
     mut exit: Query<
         &mut Node,
@@ -637,14 +649,25 @@ pub fn refresh(
             Display::Flex
         };
     }
+    let ph = palette
+        .single()
+        .map(|n| n.size().y * n.inverse_scale_factor())
+        .unwrap_or_else(|_| palette_h());
     for mut node in layers.iter_mut() {
         node.display = if st.contemplate || st.view != View::Dibujo {
             Display::None
         } else {
             Display::Flex
         };
+        // siempre justo encima de la paleta, mida lo que mida
+        node.bottom = Val::Px(ph + 12.0);
     }
-    if let Ok(mut text) = hint.single_mut() {
+    if let Ok((mut text, mut hnode)) = hint.single_mut() {
+        // en pantallas bajas (teléfono horizontal) la columna de capas sube
+        // hasta la ayuda: la ayuda se corre a la derecha
+        let short = windows.single().map(|w| w.height() < 560.0).unwrap_or(false);
+        let layers_on = !st.contemplate && st.view == View::Dibujo;
+        hnode.left = Val::Px(if short && layers_on { 118.0 } else { 14.0 });
         if st.contemplate {
             // contemplar es solo la obra
             if !text.0.is_empty() {

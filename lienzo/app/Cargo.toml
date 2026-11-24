@@ -44,3 +44,5 @@ target_sdk_version = 35
 
 [package.metadata.android.application]
 label = "Lienzo"
+# sin barra de estado: la obra ocupa toda la pantalla
+theme = "@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
