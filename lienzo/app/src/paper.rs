@@ -14,6 +14,45 @@ pub struct Paper {
     pub f: f32,
 }
 
+/// Sobre el papel (f ≈ 1) lo sumergido se oculta: no se dibuja ni se anima.
+pub fn hide_submerged(
+    paper: Res<Paper>,
+    mut last: Local<Option<bool>>,
+    mut q: Query<&mut Visibility, With<crate::world::Submerged>>,
+) {
+    let on_paper = paper.f > 0.985;
+    if *last == Some(on_paper) {
+        return;
+    }
+    *last = Some(on_paper);
+    for mut v in q.iter_mut() {
+        *v = if on_paper {
+            Visibility::Hidden
+        } else {
+            Visibility::Inherited
+        };
+    }
+}
+
+/// Condición para los sistemas que solo importan bajo el agua.
+pub fn underwater(paper: Res<Paper>) -> bool {
+    paper.f < 0.985
+}
+
+/// Traza de rendimiento (LIENZO_TRACE o Android): fotogramas por segundo
+/// cada 5 s, para medir en el teléfono por logcat.
+pub fn fps_trace(time: Res<Time>, mut acc: Local<(f32, u32)>) {
+    if !(cfg!(target_os = "android") || std::env::var("LIENZO_TRACE").is_ok()) {
+        return;
+    }
+    acc.0 += time.delta_secs();
+    acc.1 += 1;
+    if acc.0 >= 5.0 {
+        info!("fps {:.1}", acc.1 as f32 / acc.0);
+        *acc = (0.0, 0);
+    }
+}
+
 pub fn ease(time: Res<Time>, st: Res<DrawState>, mut paper: ResMut<Paper>) {
     let target = if st.view == View::Dibujo && !st.contemplate {
         1.0

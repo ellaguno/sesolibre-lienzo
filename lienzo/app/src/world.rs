@@ -33,6 +33,11 @@ pub struct Particle {
 #[derive(Component)]
 pub struct Billboard;
 
+/// Lo que solo existe bajo el agua (superficie, rayos, partículas): sobre el
+/// papel se oculta del todo y sus sistemas no corren.
+#[derive(Component)]
+pub struct Submerged;
+
 #[derive(Component)]
 pub struct Ray {
     pub tilt: f32,
@@ -71,6 +76,9 @@ pub fn setup(
 ) {
     let mut cam = commands.spawn((
         Camera3d::default(),
+        // sin multimuestreo: las cartas son quads con bordes suaves y el
+        // relleno a 2 Mpx en el teléfono es lo que más cuesta
+        Msaa::Off,
         Transform::from_xyz(0.0, 3.0, 15.0).looking_at(Vec3::new(0.0, 2.2, 0.0), Vec3::Y),
         Tonemapping::AcesFitted,
         Orbit::default(),
@@ -126,7 +134,7 @@ pub fn setup(
     ));
     if !flags.has("no_backdrop") {
         commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(90.0).mesh().uv(48, 24))),
+        Mesh3d(meshes.add(Sphere::new(400.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop.clone()),
         // centrada a la altura de la mirada: el horizonte del fondo coincide
         // con el borde del suelo, y la niebla los funde.
@@ -170,6 +178,7 @@ pub fn setup(
             Mesh3d(meshes.add(Plane3d::default().mesh().size(190.0, 190.0))),
             MeshMaterial3d(surface.clone()),
             Transform::from_xyz(0.0, HEIGHT, 0.0),
+            Submerged,
         ));
     }
     // el suelo: una sola malla esculpible que llega hasta el fondo
@@ -219,6 +228,7 @@ pub fn setup(
                 z,
                 drawn: false,
             },
+            Submerged,
         ));
     }
 
@@ -243,6 +253,7 @@ pub fn setup(
                 phase: rnd() * 6.28,
             },
             Billboard,
+            Submerged,
         ));
     }
     commands.insert_resource(Common {

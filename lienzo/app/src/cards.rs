@@ -387,8 +387,8 @@ pub fn spawn_stroke(
             let rgb = stroke.color.unwrap_or([0.9, 0.6, 0.5]);
             let mat = mats.color(rgb, &common.blob, materials);
             let slow = (1.0 - (stroke.speed() / 2.5).clamp(0.0, 1.0)) * 0.5;
-            for (k, (p, _)) in along(stroke, 0.22).into_iter().enumerate() {
-                let r = 0.55 + 0.45 * h(k) + slow;
+            for (k, (p, _)) in along(stroke, 0.34).into_iter().enumerate() {
+                let r = 0.7 + 0.5 * h(k) + slow;
                 // cada mancha flota a una altura algo distinta: la hoja da la
                 // altura media, no un plano exacto
                 let mut jitter = Vec3::new(h(k + 31) - 0.5, (h(k + 41) - 0.5) * 6.4, h(k + 51) - 0.5) * 0.25;
