@@ -132,7 +132,10 @@ fn task_pools(flags: &DebugFlags) -> bevy::app::TaskPoolPlugin {
     let mut o = TaskPoolOptions::default();
     // Sospecha: con un solo hilo por pool, en GLES no se dibuja nada. Solo con
     // la bandera `pools_min` se limita.
-    if flags.has("pools_min") {
+    // En el teléfono, pools mínimas por defecto: con las pools normales seis
+    // hilos se quedaban a ~30 % cada uno sin nada que hacer (medido en el
+    // Pixel: 215 % → 157 % de CPU en contemplación). `pools_max` las restaura.
+    if flags.has("pools_min") || (cfg!(target_os = "android") && !flags.has("pools_max")) {
         o.min_total_threads = 1;
         o.max_total_threads = 3;
         for pool in [&mut o.io, &mut o.async_compute, &mut o.compute] {
@@ -275,6 +278,7 @@ pub fn run() -> anyhow::Result<()> {
                     dive::listener,
                     cards::route_visibility,
                     paper::hide_submerged,
+                    paper::frame_rate,
                     paper::fps_trace,
                     world::drift_particles.run_if(paper::underwater),
                     world::sway_rays.run_if(paper::underwater),

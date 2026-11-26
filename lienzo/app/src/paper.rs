@@ -34,6 +34,31 @@ pub fn hide_submerged(
     }
 }
 
+/// Ritmo de fotogramas según dónde estemos: sobre el papel, casi parado
+/// (solo redibuja al tocar, o cada 200 ms); bajo el agua, ~30 fps en el
+/// teléfono y 60 en escritorio. Es lo que más CPU y batería ahorra al dibujar.
+pub fn frame_rate(
+    paper: Res<Paper>,
+    ptr: Res<crate::input::Pointer>,
+    mut settings: ResMut<bevy::winit::WinitSettings>,
+    mut last: Local<Option<bool>>,
+) {
+    use std::time::Duration;
+    // mientras hay un dedo o botón abajo, el ritmo normal (trazo fluido)
+    let calm = paper.f > 0.985 && !ptr.down;
+    if *last == Some(calm) {
+        return;
+    }
+    *last = Some(calm);
+    settings.focused_mode = if calm {
+        bevy::winit::UpdateMode::reactive_low_power(Duration::from_millis(200))
+    } else {
+        bevy::winit::UpdateMode::reactive(Duration::from_millis(
+            if cfg!(target_os = "android") { 33 } else { 16 },
+        ))
+    };
+}
+
 /// Condición para los sistemas que solo importan bajo el agua.
 pub fn underwater(paper: Res<Paper>) -> bool {
     paper.f < 0.985

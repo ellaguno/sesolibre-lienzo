@@ -123,7 +123,7 @@ pub fn control(
             .single()
             .map(|n| n.size().y * n.inverse_scale_factor())
             .unwrap_or_else(|_| crate::ui::palette_h());
-        let top_margin = 64.0;
+        let top_margin = 10.0;
         let free_h = (h - ph - top_margin).max(120.0);
         let half = crate::world::HALF_W * 1.06 * o.top_distance;
         let t = (TOP_FOV * 0.5).tan();
