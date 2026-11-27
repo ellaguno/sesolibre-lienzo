@@ -77,12 +77,12 @@ pub fn density(t: f64) -> f64 {
     d.clamp(0.35, 1.0)
 }
 
-fn pan_of(s: &Stroke) -> f32 {
-    s.centroid().x.clamp(-1.0, 1.0) * 0.8
+fn pan_of(scene: &Scene, s: &Stroke) -> f32 {
+    scene.relative(&s.centroid()).0 * 0.8
 }
 
-fn depth_of(s: &Stroke) -> f32 {
-    s.centroid().z.clamp(-1.0, 1.0)
+fn depth_of(scene: &Scene, s: &Stroke) -> f32 {
+    scene.relative(&s.centroid()).1
 }
 
 fn beats_to_seconds(ton: &Tonality, b: f64) -> f64 {
@@ -121,8 +121,8 @@ fn compose_stroke(out: &mut Vec<Event>, scene: &Scene, i: usize, seconds: f64) {
     let s = &scene.strokes[i];
     let sp = spec_for(s);
     let seed = scene.seed;
-    let pan = pan_of(s);
-    let depth = depth_of(s);
+    let pan = pan_of(scene, s);
+    let depth = depth_of(scene, s);
 
     if let (Some(inst), Some(base)) = (sp.instrument, motif::from_stroke(s, seed, i)) {
         let mut rng = Rng::from_parts(&[seed, i as u64, 0x6469_7265]);

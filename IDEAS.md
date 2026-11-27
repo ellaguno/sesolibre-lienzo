@@ -42,3 +42,5 @@ Formato: una línea, fecha, y de dónde salió. Se revisa al cerrar cada fase.
 
 - **Distorsión del agua por corrientes** (Eduardo, 19 nov 2026): además de la ondulación de la red de cáusticas, que las cartas y el relieve se mezan con un campo de corrientes (desplazamiento en el vértice, barato en GLES), y en escritorio la refracción de pantalla completa.
 - **Barra de herramientas con iconos**: en vez de botones con texto, el icono es la propia imagen del elemento (y una tira de colores); en el móvil los botones de texto llenan la pantalla. Es parte de la interfaz táctil definitiva, a diseñar con Eduardo.
+
+- **Varita mágica y fauna pequeña** (sugerencia del primer usuario, 27 nov 2026): un pincel "varita" que va sembrando variedad al pasar: plantas, corales y rocas de distintos tipos en el fondo; peces pequeños variados; animales de fondo como camarones, cangrejos, langostas, pulpos (no animales grandes). Requiere una tanda nueva de prompts e imágenes (ver `assets/sprites/prompts`) y una familia "Varita" en el core con elección aleatoria ponderada por capa. Siguiente fase.

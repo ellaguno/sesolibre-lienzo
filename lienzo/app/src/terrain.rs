@@ -2,7 +2,7 @@
 //! (`lienzo_core::terrain`). Se regenera cuando cambia la obra.
 
 use crate::material::CardMaterial;
-use crate::world::{to_core, HALF_W, HALF_X, HEIGHT};
+use crate::world::{to_core, HEIGHT};
 use crate::Obra;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -67,8 +67,8 @@ pub fn build_mesh(scene: &Scene) -> Mesh {
             let x = coord(i);
             let z = coord(j);
             // fuera del volumen dibujable el relieve se apaga suavemente
-            let r = (x.abs() / HALF_X).max(z.abs() / HALF_W);
-            let edge = ((1.6 - r) / 0.6).clamp(0.0, 1.0);
+            let r = x.abs().max(z.abs());
+            let edge = ((EXTENT - 6.0 - r) / 12.0).clamp(0.0, 1.0);
             let y = floor_y(scene, x, z) * edge;
             heights[j * n + i] = y;
             pos.push([x, y, z]);

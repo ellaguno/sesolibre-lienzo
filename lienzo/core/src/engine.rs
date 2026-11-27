@@ -478,7 +478,7 @@ impl Engine {
         let now = self.now_seconds() + 0.05;
         let ton = tonality(self.scene.water);
         let beat = ton.beat_seconds();
-        let c = stroke.centroid();
+        let (rx, rz) = self.scene.relative(&stroke.centroid());
         if let (Some(inst), Some(m)) = (
             sp.instrument,
             motif::from_stroke(stroke, self.scene.seed, index),
@@ -490,8 +490,8 @@ impl Engine {
                     midi: ton.degree_to_midi(n.degree),
                     vel: n.vel,
                     dur: n.beats * beat,
-                    pan: c.x.clamp(-1.0, 1.0) * 0.8,
-                    depth: c.z.clamp(-1.0, 1.0),
+                    pan: rx * 0.8,
+                    depth: rz,
                     stroke: Some(index),
                 };
                 self.pending.push(ev);
@@ -502,8 +502,8 @@ impl Engine {
                 t: now,
                 name,
                 gain: 0.9,
-                pan: c.x * 0.8,
-                depth: c.z,
+                pan: rx * 0.8,
+                depth: rz,
                 stroke: index,
             });
         }

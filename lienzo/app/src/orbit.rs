@@ -22,6 +22,11 @@ pub struct Orbit {
     pub dive_pitch: f32,
     /// Desplazamiento de la hoja (unidades de mundo) en la vista de dibujo.
     pub pan: Vec3,
+    /// Encaje de la obra en el papel: centro y medios lados (mundo), y la
+    /// obra para la que se calculó (semilla + ruta).
+    pub fit_center: Vec3,
+    pub fit_half: Vec2,
+    pub fit_key: Option<String>,
 }
 
 impl Default for Orbit {
@@ -36,6 +41,9 @@ impl Default for Orbit {
             // en el papel es un factor de zoom: 1 = el lienzo cabe justo
             top_distance: 1.0,
             pan: Vec3::ZERO,
+            fit_center: Vec3::ZERO,
+            fit_half: Vec2::new(crate::world::HALF_X, crate::world::HALF_W),
+            fit_key: None,
             // LIENZO_PITCH=-0.5 arranca mirando hacia arriba (pruebas y capturas)
             dive_pitch: std::env::var("LIENZO_PITCH")
                 .ok()
@@ -134,8 +142,31 @@ pub fn control(
         // en vertical la columna de capas vive sobre la paleta: la hoja sube
         let column = if h > w { 250.0 } else { 0.0 };
         let free_h = (h - ph - top_margin - column).max(120.0);
-        let half_x = crate::world::HALF_X * 1.05 * o.top_distance;
-        let half_z = crate::world::HALF_W * 1.05 * o.top_distance;
+        // al abrir otra obra, el papel encaja lo dibujado (con un mínimo de
+        // hoja para empezar); mientras se dibuja no se reencaja: la hoja
+        // solo se mueve con los dedos
+        let key = format!("{}|{:?}", obra.scene.seed, obra.path);
+        if o.fit_key.as_deref() != Some(key.as_str()) {
+            o.fit_key = Some(key);
+            o.pan = Vec3::ZERO;
+            o.top_distance = 1.0;
+            let (cx, cz) = obra.scene.center();
+            let c = crate::world::to_world(lienzo_core::Point::new(cx, 0.0, cz));
+            o.fit_center = Vec3::new(c.x, 0.0, c.z);
+            let (hx, hz) = obra
+                .scene
+                .bounds()
+                .map(|(a, b)| {
+                    (
+                        ((b.0 - a.0) * 0.5 * crate::world::HALF_X + 2.0).max(crate::world::HALF_X),
+                        ((b.1 - a.1) * 0.5 * crate::world::HALF_W + 2.0).max(crate::world::HALF_W),
+                    )
+                })
+                .unwrap_or((crate::world::HALF_X, crate::world::HALF_W));
+            o.fit_half = Vec2::new(hx, hz);
+        }
+        let half_x = o.fit_half.x * 1.05 * o.top_distance;
+        let half_z = o.fit_half.y * 1.05 * o.top_distance;
         let t = (TOP_FOV * 0.5).tan();
         let d_v = half_z * (h / free_h) / t; // limitado por el alto libre
         // margen lateral para la columna de capas (y simetría)
@@ -151,15 +182,15 @@ pub fn control(
         // desplazar: la hoja sigue a los dedos, sin salirse del todo
         if delta != Vec2::ZERO {
             let pan = o.pan - (screen_right * delta.x + screen_down * delta.y) * upp;
-            o.pan = Vec3::new(
-                pan.x.clamp(-crate::world::HALF_X, crate::world::HALF_X),
-                0.0,
-                pan.z.clamp(-crate::world::HALF_W, crate::world::HALF_W),
-            );
+            let lim_x = crate::world::HALF_X * crate::world::FAR_X;
+            let lim_z = crate::world::HALF_W * crate::world::FAR_Z;
+            o.pan = Vec3::new(pan.x.clamp(-lim_x, lim_x), 0.0, pan.z.clamp(-lim_z, lim_z));
         }
-        (TOP_PITCH, d, screen_down * shift + o.pan, TOP_FOV)
+        (TOP_PITCH, d, o.fit_center + screen_down * shift + o.pan, TOP_FOV)
     } else {
-        (o.dive_pitch, o.distance, Vec3::new(0.0, 2.2, 0.0), DIVE_FOV)
+        let (cx, cz) = obra.scene.center();
+        let c = crate::world::to_world(lienzo_core::Point::new(cx, 0.0, cz));
+        (o.dive_pitch, o.distance, Vec3::new(c.x, 2.2, c.z), DIVE_FOV)
     };
     // al entrar a contemplar la cámara baja despacio: es un viaje
     let rate = if st.contemplate { 1.0 } else { 3.0 };

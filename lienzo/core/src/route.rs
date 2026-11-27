@@ -18,6 +18,7 @@ pub fn drawn(scene: &Scene) -> Option<Vec<Point>> {
 /// del centro, a media agua, sin acercarse demasiado al borde. Sin trazos, un
 /// círculo.
 pub fn auto(scene: &Scene) -> Vec<Point> {
+    let (cx, cz) = scene.center();
     let mut pts: Vec<(f32, Point)> = scene
         .strokes
         .iter()
@@ -29,31 +30,31 @@ pub fn auto(scene: &Scene) -> Vec<Point> {
         })
         .map(|s| {
             let c = s.centroid();
-            (c.z.atan2(c.x), c)
+            ((c.z - cz).atan2(c.x - cx), c)
         })
         .collect();
     if pts.len() < 3 {
         return (0..12)
             .map(|i| {
                 let a = i as f32 / 12.0 * std::f32::consts::TAU;
-                Point::new(0.85 * a.cos(), 0.6, 0.85 * a.sin())
+                Point::new(cx + 0.85 * a.cos(), 0.6, cz + 0.85 * a.sin())
             })
             .collect();
     }
     pts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-    // un lazo por fuera de todo: radio fijo, más allá del elemento más lejano,
-    // de modo que nunca se atraviesa nada; la altura sigue a cada elemento
+    // un lazo alrededor de la obra, más allá del elemento más lejano del
+    // centro: nunca se atraviesa nada; la altura sigue a cada elemento
     let max_r = pts
         .iter()
-        .map(|(_, c)| (c.x * c.x + c.z * c.z).sqrt())
+        .map(|(_, c)| ((c.x - cx).powi(2) + (c.z - cz).powi(2)).sqrt())
         .fold(0.0f32, f32::max);
-    let radius = (max_r + 0.3).clamp(0.7, 1.0);
+    let radius = (max_r + 0.3).max(0.7);
     pts.iter()
         .map(|(a, c)| {
             Point::new(
-                radius * a.cos(),
+                cx + radius * a.cos(),
                 (c.y * 0.5 + 0.5).clamp(0.52, 0.82),
-                radius * a.sin(),
+                cz + radius * a.sin(),
             )
         })
         .collect()
@@ -86,9 +87,9 @@ pub fn sample(route: &[Point], u: f32) -> Point {
     };
     // Catmull-Rom puede sobrepasar los puntos: la ruta nunca sale del agua
     Point::new(
-        cr(p0.x, p1.x, p2.x, p3.x).clamp(-1.05, 1.05),
+        cr(p0.x, p1.x, p2.x, p3.x),
         cr(p0.y, p1.y, p2.y, p3.y).clamp(0.12, 0.9),
-        cr(p0.z, p1.z, p2.z, p3.z).clamp(-1.05, 1.05),
+        cr(p0.z, p1.z, p2.z, p3.z),
     )
 }
 
@@ -109,14 +110,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn auto_route_is_a_loop_around_the_volume() {
+    fn auto_route_is_a_loop_around_the_work() {
         let s = Scene::demo();
         let r = of(&s);
         assert!(r.len() >= 3);
+        let (cx, cz) = s.center();
         for i in 0..50 {
             let p = sample(&r, i as f32 / 50.0);
-            // rodea la obra: puede asomar apenas fuera del lienzo
-            assert!(p.x.abs() <= 1.05 && p.z.abs() <= 1.05 && (0.0..=1.0).contains(&p.y));
+            // rodea la obra a una distancia razonable de su centro
+            let d = ((p.x - cx).powi(2) + (p.z - cz).powi(2)).sqrt();
+            assert!(d > 0.3 && d < 3.0 && (0.0..=1.0).contains(&p.y));
         }
         assert!(length(&r) > 1.0);
     }

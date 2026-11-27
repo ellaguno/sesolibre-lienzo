@@ -236,6 +236,44 @@ pub struct Scene {
 }
 
 impl Scene {
+    /// Caja envolvente (x, z) de lo dibujado; `None` sin trazos. La hoja es
+    /// abierta: no hay cuadro fijo, la obra define su propio espacio.
+    pub fn bounds(&self) -> Option<((f32, f32), (f32, f32))> {
+        let mut it = self.strokes.iter().flat_map(|s| s.points.iter());
+        let first = it.next()?;
+        let (mut min, mut max) = ((first.x, first.z), (first.x, first.z));
+        for p in it {
+            min.0 = min.0.min(p.x);
+            min.1 = min.1.min(p.z);
+            max.0 = max.0.max(p.x);
+            max.1 = max.1.max(p.z);
+        }
+        Some((min, max))
+    }
+
+    /// Centro de la obra (0,0 si está vacía).
+    pub fn center(&self) -> (f32, f32) {
+        self.bounds()
+            .map(|(a, b)| ((a.0 + b.0) * 0.5, (a.1 + b.1) * 0.5))
+            .unwrap_or((0.0, 0.0))
+    }
+
+    /// Posición de un punto relativa a la obra, en [-1, 1] por eje (una obra
+    /// pequeña conserva la escala de siempre: medio ancho mínimo 1).
+    pub fn relative(&self, p: &Point) -> (f32, f32) {
+        let (c, half) = match self.bounds() {
+            Some((a, b)) => (
+                ((a.0 + b.0) * 0.5, (a.1 + b.1) * 0.5),
+                (((b.0 - a.0) * 0.5).max(1.0), ((b.1 - a.1) * 0.5).max(1.0)),
+            ),
+            None => ((0.0, 0.0), (1.0, 1.0)),
+        };
+        (
+            ((p.x - c.0) / half.0).clamp(-1.0, 1.0),
+            ((p.z - c.1) / half.1).clamp(-1.0, 1.0),
+        )
+    }
+
     pub fn new(seed: u64) -> Self {
         Scene {
             version: 1,

@@ -109,16 +109,18 @@ pub fn swim(
         .unwrap_or(1.0);
     // y siempre un poco por fuera del lienzo: se contempla la obra entera
     let wide = 1.4 * (1.0 + 0.45 * (portrait - 1.0));
-    target.x *= wide;
-    target.z *= wide;
-    ahead.x *= wide;
-    ahead.z *= wide;
+    let (cx, cz) = obra.scene.center();
+    let c = to_world(lienzo_core::Point::new(cx, 0.0, cz));
+    target.x = c.x + (target.x - c.x) * wide;
+    target.z = c.z + (target.z - c.z) * wide;
+    ahead.x = c.x + (ahead.x - c.x) * wide;
+    ahead.z = c.z + (ahead.z - c.z) * wide;
     // nunca dentro del relieve: al menos 1.7 por encima del suelo
     let floor = crate::terrain::floor_y(&obra.scene, target.x, target.z);
     target.y = target.y.max(floor + 2.3);
     // la mirada va por delante y se vuelve hacia la obra (el centro), un
     // poco por debajo de la cámara: se contempla, no se mira la arena
-    let center = Vec3::new(0.0, (target.y - 1.2).max(floor + 1.0), 0.0);
+    let center = Vec3::new(c.x, (target.y - 1.2).max(floor + 1.0), c.z);
     ahead = ahead * 0.55 + center * 0.45;
     ahead.y = ahead.y.min(target.y - 0.2);
     // suavidad: la cámara persigue la ruta, la mirada va un poco por delante

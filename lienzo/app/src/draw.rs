@@ -272,9 +272,9 @@ fn cursor_point(
         }
     };
     Some(Vec3::new(
-        hit.x.clamp(-HALF_X, HALF_X),
+        hit.x.clamp(-HALF_X * crate::world::FAR_X, HALF_X * crate::world::FAR_X),
         hit.y.clamp(0.0, HEIGHT),
-        hit.z.clamp(-HALF_W, HALF_W),
+        hit.z.clamp(-HALF_W * crate::world::FAR_Z, HALF_W * crate::world::FAR_Z),
     ))
 }
 
