@@ -6,7 +6,7 @@ use crate::cards::{self, Owned, SpriteMaterials};
 use crate::input::Pointer;
 use crate::material::CardMaterial;
 use crate::orbit::Orbit;
-use crate::world::{to_core, Common, HALF_W, HEIGHT};
+use crate::world::{to_core, Common, HALF_W, HALF_X, HEIGHT};
 use crate::Obra;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -268,7 +268,7 @@ fn cursor_point(
         }
     };
     Some(Vec3::new(
-        hit.x.clamp(-HALF_W, HALF_W),
+        hit.x.clamp(-HALF_X, HALF_X),
         hit.y.clamp(0.0, HEIGHT),
         hit.z.clamp(-HALF_W, HALF_W),
     ))

@@ -125,10 +125,13 @@ pub fn control(
             .unwrap_or_else(|_| crate::ui::palette_h());
         let top_margin = 10.0;
         let free_h = (h - ph - top_margin).max(120.0);
-        let half = crate::world::HALF_W * 1.06 * o.top_distance;
+        let half_x = crate::world::HALF_X * 1.05 * o.top_distance;
+        let half_z = crate::world::HALF_W * 1.05 * o.top_distance;
         let t = (TOP_FOV * 0.5).tan();
-        let d_v = half * (h / free_h) / t; // limitado por el alto libre
-        let d_h = half / (t * (w / h)); // limitado por el ancho
+        let d_v = half_z * (h / free_h) / t; // limitado por el alto libre
+        // margen lateral para la columna de capas (y simetría)
+        let free_w = (w - 2.0 * 110.0).max(w * 0.5);
+        let d_h = half_x * (w / free_w) / (t * (w / h)); // limitado por el ancho
         let d = d_v.max(d_h);
         // el centro del área libre está por encima del centro de pantalla:
         // se mira a un punto "más abajo" del lienzo para subirlo

@@ -9,16 +9,18 @@ use bevy::prelude::*;
 use bevy::render::view::Tonemapping;
 
 /// Tamaño del volumen en unidades de mundo. El core usa x,z ∈ [-1,1], y ∈ [0,1].
+/// La hoja es apaisada (3:2): ±HALF_X de ancho y ±HALF_W de fondo.
+pub const HALF_X: f32 = 9.0;
 pub const HALF_W: f32 = 6.0;
 pub const HEIGHT: f32 = 5.0;
 
 pub fn to_world(p: lienzo_core::Point) -> Vec3 {
-    Vec3::new(p.x * HALF_W, p.y * HEIGHT, p.z * HALF_W)
+    Vec3::new(p.x * HALF_X, p.y * HEIGHT, p.z * HALF_W)
 }
 
 pub fn to_core(v: Vec3) -> lienzo_core::Point {
     lienzo_core::Point::new(
-        (v.x / HALF_W).clamp(-1.0, 1.0),
+        (v.x / HALF_X).clamp(-1.0, 1.0),
         (v.y / HEIGHT).clamp(0.0, 1.0),
         (v.z / HALF_W).clamp(-1.0, 1.0),
     )
@@ -155,10 +157,10 @@ pub fn setup(
         false,
     ));
     for (x, z, w, h) in [
-        (0.0, -HALF_W, 2.0 * HALF_W + 0.08, 0.08),
-        (0.0, HALF_W, 2.0 * HALF_W + 0.08, 0.08),
-        (-HALF_W, 0.0, 0.08, 2.0 * HALF_W),
-        (HALF_W, 0.0, 0.08, 2.0 * HALF_W),
+        (0.0, -HALF_W, 2.0 * HALF_X + 0.08, 0.08),
+        (0.0, HALF_W, 2.0 * HALF_X + 0.08, 0.08),
+        (-HALF_X, 0.0, 0.08, 2.0 * HALF_W),
+        (HALF_X, 0.0, 0.08, 2.0 * HALF_W),
     ] {
         commands.spawn((
             Mesh3d(quad.clone()),

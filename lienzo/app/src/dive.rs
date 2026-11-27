@@ -93,7 +93,7 @@ pub fn swim(
     if dive.key != key {
         dive.key = key;
         dive.route = route::of(&obra.scene);
-        dive.route_len = route::length(&dive.route).max(0.5) * crate::world::HALF_W;
+        dive.route_len = route::length(&dive.route).max(0.5) * crate::world::HALF_X;
     }
     let dt = time.delta_secs();
     dive.u = (dive.u + SPEED * dt / dive.route_len).rem_euclid(1.0);
