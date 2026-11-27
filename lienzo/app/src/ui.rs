@@ -575,9 +575,9 @@ pub fn on_click(
     q: Query<&Action>,
     mut st: ResMut<DrawState>,
     mut obra: ResMut<Obra>,
-    mut keys: ResMut<ButtonInput<KeyCode>>,
     swipe: Res<Swipe>,
     mut row: Query<&mut ScrollPosition, With<BrushRow>>,
+    mut gallery: ResMut<crate::gallery::Gallery>,
 ) {
     let Ok(action) = q.get(click.event().entity) else {
         return;
@@ -611,9 +611,12 @@ pub fn on_click(
             st.brush = Brush::Color;
             st.title_dirty = true;
         }
-        // deshacer vive en draw::keys; se simula la tecla
-        Action::Undo => keys.press(KeyCode::KeyZ),
-        Action::Gallery => keys.press(KeyCode::KeyG),
+        // antes se simulaba la tecla; el pulso se perdía según el fotograma
+        Action::Undo => st.undo_pending = true,
+        Action::Gallery => {
+            gallery.open = !gallery.open;
+            gallery.rebuild = gallery.open;
+        }
         Action::ScrollRow(dir) => {
             if let Ok(mut sp) = row.single_mut() {
                 sp.0.x = (sp.0.x + dir * icon_d() * 3.0).max(0.0);

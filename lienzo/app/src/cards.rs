@@ -16,6 +16,11 @@ pub struct SpriteMaterials {
 }
 
 impl SpriteMaterials {
+    /// Los materiales de color (para retintarlos según el papel).
+    pub fn color_handles(&self) -> impl Iterator<Item = &Handle<CardMaterial>> {
+        self.colors.values()
+    }
+
     fn get(
         &mut self,
         name: &'static str,

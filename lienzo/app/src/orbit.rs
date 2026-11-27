@@ -20,6 +20,8 @@ pub struct Orbit {
     pub top_distance: f32,
     /// Inclinación elegida en el buceo.
     pub dive_pitch: f32,
+    /// Desplazamiento de la hoja (unidades de mundo) en la vista de dibujo.
+    pub pan: Vec3,
 }
 
 impl Default for Orbit {
@@ -33,6 +35,7 @@ impl Default for Orbit {
             idle: 99.0,
             // en el papel es un factor de zoom: 1 = el lienzo cabe justo
             top_distance: 1.0,
+            pan: Vec3::ZERO,
             // LIENZO_PITCH=-0.5 arranca mirando hacia arriba (pruebas y capturas)
             dive_pitch: std::env::var("LIENZO_PITCH")
                 .ok()
@@ -90,11 +93,15 @@ pub fn control(
     let delta = ptr.orbit;
     let top = st.view == View::Dibujo;
     if delta != Vec2::ZERO {
-        o.yaw -= delta.x * 0.004;
-        if !top {
+        if top {
+            // la hoja se desplaza con los dedos (se resuelve más abajo, con
+            // la escala de pantalla); no gira
+            o.idle = 0.0;
+        } else {
+            o.yaw -= delta.x * 0.004;
             o.dive_pitch = (o.dive_pitch + delta.y * 0.004).clamp(PITCH_MIN, PITCH_MAX);
+            o.idle = 0.0;
         }
-        o.idle = 0.0;
     } else {
         o.idle += dt;
     }
@@ -140,7 +147,17 @@ pub fn control(
         let upp = 2.0 * d * t / h; // unidades de mundo por píxel
         let shift = (h * 0.5 - (top_margin + free_h * 0.5)) * upp;
         let screen_down = Vec3::new(o.yaw.sin(), 0.0, o.yaw.cos());
-        (TOP_PITCH, d, screen_down * shift, TOP_FOV)
+        let screen_right = Vec3::new(o.yaw.cos(), 0.0, -o.yaw.sin());
+        // desplazar: la hoja sigue a los dedos, sin salirse del todo
+        if delta != Vec2::ZERO {
+            let pan = o.pan - (screen_right * delta.x + screen_down * delta.y) * upp;
+            o.pan = Vec3::new(
+                pan.x.clamp(-crate::world::HALF_X, crate::world::HALF_X),
+                0.0,
+                pan.z.clamp(-crate::world::HALF_W, crate::world::HALF_W),
+            );
+        }
+        (TOP_PITCH, d, screen_down * shift + o.pan, TOP_FOV)
     } else {
         (o.dive_pitch, o.distance, Vec3::new(0.0, 2.2, 0.0), DIVE_FOV)
     };

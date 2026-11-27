@@ -80,6 +80,8 @@ pub struct DrawState {
     last_tap: f32,
     /// Vista desde la que se entró a contemplar: al salir se vuelve a ella.
     before: View,
+    /// Deshacer pedido desde la interfaz.
+    pub undo_pending: bool,
 }
 
 impl DrawState {
@@ -125,6 +127,7 @@ impl Default for DrawState {
             exit_until: 0.0,
             last_tap: -10.0,
             before: View::Dibujo,
+            undo_pending: false,
         }
     }
 }
@@ -205,7 +208,8 @@ pub fn keys(
         }
         st.title_dirty = true;
     }
-    if keys.just_pressed(KeyCode::KeyZ) && !obra.scene.strokes.is_empty() {
+    let undo = keys.just_pressed(KeyCode::KeyZ) || std::mem::take(&mut st.undo_pending);
+    if undo && !obra.scene.strokes.is_empty() {
         let last = obra.scene.strokes.len() - 1;
         obra.scene.strokes.pop();
         for (e, o) in owned.iter() {

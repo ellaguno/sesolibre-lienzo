@@ -111,6 +111,7 @@ pub fn apply(
     common: Res<Common>,
     mut materials: ResMut<Assets<CardMaterial>>,
     mut clear: ResMut<ClearColor>,
+    mats: Res<crate::cards::SpriteMaterials>,
 ) {
     let w = obra.scene.water;
     let f = paper.f;
@@ -153,6 +154,14 @@ pub fn apply(
     }
     if let Some(mut m) = materials.get_mut(&common.dot) {
         m.color = Color::srgba(1.0, 1.0, 1.0, lk.particles * wet).into();
+    }
+    // las manchas de color: pintura sobre el papel, veladura bajo el agua
+    for hcol in mats.color_handles() {
+        if let Some(mut m) = materials.get_mut(hcol) {
+            let mut c = m.color;
+            c.alpha = 1.0 + 4.5 * f;
+            m.color = c;
+        }
     }
     if let Some(mut m) = materials.get_mut(&common.frame) {
         // el borde del lienzo solo existe sobre el papel

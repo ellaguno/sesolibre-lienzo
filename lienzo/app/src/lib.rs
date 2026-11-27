@@ -283,7 +283,7 @@ pub fn run() -> anyhow::Result<()> {
                     world::drift_particles.run_if(paper::underwater),
                     world::sway_rays.run_if(paper::underwater),
                     world::refraction,
-                    cards::animate,
+                    cards::animate.run_if(paper::underwater),
                     world::billboards,
                     draw::title,
                     sync_audio,

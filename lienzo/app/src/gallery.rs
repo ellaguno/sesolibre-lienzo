@@ -43,7 +43,7 @@ pub struct Gallery {
     pub entries: Vec<Entry>,
     pub editing_title: bool,
     pub status: String,
-    rebuild: bool,
+    pub rebuild: bool,
 }
 
 #[derive(Component)]
@@ -492,6 +492,11 @@ pub fn apply(
             Err(e) => g.status = format!("no se pudo guardar: {e}"),
         },
         Cmd::New => {
+            // lo dibujado no se pierde: si tiene trazos y no estaba en la
+            // galería, se guarda ahí antes de empezar de cero
+            if !obra.scene.strokes.is_empty() && obra.path.is_none() {
+                let _ = save(&mut obra);
+            }
             let mut sc = Scene::new(new_seed());
             sc.title = String::new();
             replace_scene(
