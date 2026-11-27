@@ -136,7 +136,7 @@ pub fn setup(
     ));
     if !flags.has("no_backdrop") {
         commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(400.0).mesh().uv(48, 24))),
+        Mesh3d(meshes.add(Sphere::new(900.0).mesh().uv(48, 24))),
         MeshMaterial3d(backdrop.clone()),
         // centrada a la altura de la mirada: el horizonte del fondo coincide
         // con el borde del suelo, y la niebla los funde.
